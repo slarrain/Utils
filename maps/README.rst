@@ -34,7 +34,7 @@ Output
 * The Map shows each Municipality with a different color, according to their relative
   position with other Municipalities from the Map. Darker is worse; Lighter is better
 
-..image:: heatmap_5.svg
+.. image:: heatmap_5.svg
 
 Goal
 ----
