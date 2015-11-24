@@ -1,0 +1,347 @@
+,codigo,comuna
+0,15101,Arica
+1,15102,Camarones
+2,15201,Putre
+3,15202,General Lagos
+4,1101,Iquique
+5,1107,Alto Hospicio
+6,1401,Pozo Almonte
+7,1402,Camina
+8,1403,Colchane
+9,1404,Huara
+10,1405,Pica
+11,2101,Antofagasta
+12,2102,Mejillones
+13,2103,Sierra Gorda
+14,2104,Taltal
+15,2201,Calama
+16,2202,Ollague
+17,2203,San Pedro de Atacama
+18,2301,Tocopilla
+19,2302,Maria Elena
+20,3101,Copiapo
+21,3102,Caldera
+22,3103,Tierra Amarilla
+23,3201,Chanaral
+24,3202,Diego de Almagro
+25,3301,Vallenar
+26,3302,Alto del Carmen
+27,3303,Freirina
+28,3304,Huasco
+29,4101,La Serena
+30,4102,Coquimbo
+31,4103,Andacollo
+32,4104,La Higuera
+33,4105,Paiguano
+34,4106,Vicuna
+35,4201,Illapel
+36,4202,Canela
+37,4203,Los Vilos
+38,4204,Salamanca
+39,4301,Ovalle
+40,4302,Combarbala
+41,4303,Monte Patria
+42,4304,Punitaqui
+43,4305,Rio Hurtado
+44,5101,Valparaiso
+45,5102,Casablanca
+46,5103,Concon
+47,5104,Juan Fernandez
+48,5105,Puchuncavi
+49,5107,Quintero
+50,5109,Vina del Mar
+51,5201,Isla de Pascua
+52,5301,Los Andes
+53,5302,Calle Larga
+54,5303,Rinconada
+55,5304,San Esteban
+56,5401,La Ligua
+57,5402,Cabildo
+58,5403,Papudo
+59,5404,Petorca
+60,5405,Zapallar
+61,5501,Quillota
+62,5502,Calera
+63,5503,Hijuelas
+64,5504,La Cruz
+65,5506,Nogales
+66,5601,San Antonio
+67,5602,Algarrobo
+68,5603,Cartagena
+69,5604,El Quisco
+70,5605,El Tabo
+71,5606,Santo Domingo
+72,5701,San Felipe
+73,5702,Catemu
+74,5703,Llaillay
+75,5704,Panquehue
+76,5705,Putaendo
+77,5706,Santa Maria
+78,5801,Quilpue
+79,5802,Limache
+80,5803,Olmue
+81,5804,Villa Alemana
+82,6101,Rancagua
+83,6102,Codegua
+84,6103,Coinco
+85,6104,Coltauco
+86,6105,Donihue
+87,6106,Graneros
+88,6107,Las Cabras
+89,6108,Machali
+90,6109,Malloa
+91,6110,Mostazal
+92,6111,Olivar
+93,6112,Peumo
+94,6113,Pichidegua
+95,6114,Quinta de Tilcoco
+96,6115,Rengo
+97,6116,Requinoa
+98,6117,San Vicente
+99,6201,Pichilemu
+100,6202,La Estrella
+101,6203,Litueche
+102,6204,Marchihue
+103,6205,Navidad
+104,6206,Paredones
+105,6301,San Fernando
+106,6302,Chepica
+107,6303,Chimbarongo
+108,6304,Lolol
+109,6305,Nancagua
+110,6306,Palmilla
+111,6307,Peralillo
+112,6308,Placilla
+113,6309,Pumanque
+114,6310,Santa Cruz
+115,7101,Talca
+116,7102,Constitucion
+117,7103,Curepto
+118,7104,Empedrado
+119,7105,Maule
+120,7106,Pelarco
+121,7107,Pencahue
+122,7108,Rio Claro
+123,7109,San Clemente
+124,7110,San Rafael
+125,7201,Cauquenes
+126,7202,Chanco
+127,7203,Pelluhue
+128,7301,Curico
+129,7302,Hualane
+130,7303,Licanten
+131,7304,Molina
+132,7305,Rauco
+133,7306,Romeral
+134,7307,Sagrada Familia
+135,7308,Teno
+136,7309,Vichuquen
+137,7401,Linares
+138,7402,Colbun
+139,7403,Longavi
+140,7404,Parral
+141,7405,Retiro
+142,7406,San Javier
+143,7407,Villa Alegre
+144,7408,Yerbas Buenas
+145,8101,Concepcion
+146,8102,Coronel
+147,8103,Chiguayante
+148,8104,Florida
+149,8105,Hualqui
+150,8106,Lota
+151,8107,Penco
+152,8108,San Pedro de la Paz
+153,8109,Santa Juana
+154,8110,Talcahuano
+155,8111,Tome
+156,8112,Hualpen
+157,8201,Lebu
+158,8202,Arauco
+159,8203,Canete
+160,8204,Contulmo
+161,8205,Curanilahue
+162,8206,Los Alamos
+163,8207,Tirua
+164,8301,Los Angeles
+165,8302,Antuco
+166,8303,Cabrero
+167,8304,Laja
+168,8305,Mulchen
+169,8306,Nacimiento
+170,8307,Negrete
+171,8308,Quilaco
+172,8309,Quilleco
+173,8310,San Rosendo
+174,8311,Santa Barbara
+175,8312,Tucapel
+176,8313,Yumbel
+177,8314,Alto Biobio
+178,8401,Chillan
+179,8402,Bulnes
+180,8403,Cobquecura
+181,8404,Coelemu
+182,8405,Coihueco
+183,8406,Chillan Viejo
+184,8407,El Carmen
+185,8408,Ninhue
+186,8409,Niquen
+187,8410,Pemuco
+188,8411,Pinto
+189,8412,Portezuelo
+190,8413,Quillon
+191,8414,Quirihue
+192,8415,Ranquil
+193,8416,San Carlos
+194,8417,San Fabian
+195,8418,San Ignacio
+196,8419,San Nicolas
+197,8420,Treguaco
+198,8421,Yungay
+199,9101,Temuco
+200,9102,Carahue
+201,9103,Cunco
+202,9104,Curarrehue
+203,9105,Freire
+204,9106,Galvarino
+205,9107,Gorbea
+206,9108,Lautaro
+207,9109,Loncoche
+208,9110,Melipeuco
+209,9111,Nueva Imperial
+210,9112,Padre las Casas
+211,9113,Perquenco
+212,9114,Pitrufquen
+213,9115,Pucon
+214,9116,Saavedra
+215,9117,Teodoro Schmidt
+216,9118,Tolten
+217,9119,Vilcun
+218,9120,Villarrica
+219,9121,Cholchol
+220,9201,Angol
+221,9202,Collipulli
+222,9203,Curacautin
+223,9204,Ercilla
+224,9205,Lonquimay
+225,9206,Los Sauces
+226,9207,Lumaco
+227,9208,Puren
+228,9209,Renaico
+229,9210,Traiguen
+230,9211,Victoria
+231,14101,Valdivia
+232,14102,Corral
+233,14103,Lanco
+234,14104,Los Lagos
+235,14105,Mafil
+236,14106,Mariquina
+237,14107,Paillaco
+238,14108,Panguipulli
+239,14201,La Union
+240,14202,Futrono
+241,14203,Lago Ranco
+242,14204,Rio Bueno
+243,10101,Puerto Montt
+244,10102,Calbuco
+245,10103,Cochamo
+246,10104,Fresia
+247,10105,Frutillar
+248,10106,Los Muermos
+249,10107,Llanquihue
+250,10108,Maullin
+251,10109,Puerto Varas
+252,10201,Castro
+253,10202,Ancud
+254,10203,Chonchi
+255,10204,Curaco de Velez
+256,10205,Dalcahue
+257,10206,Puqueldon
+258,10207,Queilen
+259,10208,Quellon
+260,10209,Quemchi
+261,10210,Quinchao
+262,10301,Osorno
+263,10302,Puerto Octay
+264,10303,Purranque
+265,10304,Puyehue
+266,10305,Rio Negro
+267,10306,San Juan de la Costa
+268,10307,San Pablo
+269,10401,Chaiten
+270,10402,Futaleufu
+271,10403,Hualaihue
+272,10404,Palena
+273,11101,Coihaique
+274,11102,Lago Verde
+275,11201,Aisen
+276,11202,Cisnes
+277,11203,Guaitecas
+278,11301,Cochrane
+279,11302,O’Higgins
+280,11303,Tortel
+281,11401,Chile Chico
+282,11402,Rio Ibanez
+283,12101,Punta Arenas
+284,12102,Laguna Blanca
+285,12103,Rio Verde
+286,12104,San Gregorio
+287,12201,Cabo de Hornos (Ex Navarino)
+288,12202,Antartica
+289,12301,Porvenir
+290,12302,Primavera
+291,12303,Timaukel
+292,12401,Natales
+293,12402,Torres del Paine
+294,13101,Santiago
+295,13102,Cerrillos
+296,13103,Cerro Navia
+297,13104,Conchali
+298,13105,El Bosque
+299,13106,Estacion Central
+300,13107,Huechuraba
+301,13108,Independencia
+302,13109,La Cisterna
+303,13110,La Florida
+304,13111,La Granja
+305,13112,La Pintana
+306,13113,La Reina
+307,13114,Las Condes
+308,13115,Lo Barnechea
+309,13116,Lo Espejo
+310,13117,Lo Prado
+311,13118,Macul
+312,13119,Maipu
+313,13120,Nunoa
+314,13121,Pedro Aguirre Cerda
+315,13122,Penalolen
+316,13123,Providencia
+317,13124,Pudahuel
+318,13125,Quilicura
+319,13126,Quinta Normal
+320,13127,Recoleta
+321,13128,Renca
+322,13129,San Joaquin
+323,13130,San Miguel
+324,13131,San Ramon
+325,13132,Vitacura
+326,13201,Puente Alto
+327,13202,Pirque
+328,13203,San Jose de Maipo
+329,13301,Colina
+330,13302,Lampa
+331,13303,Tiltil
+332,13401,San Bernardo
+333,13402,Buin
+334,13403,Calera de Tango
+335,13404,Paine
+336,13501,Melipilla
+337,13502,Alhue
+338,13503,Curacavi
+339,13504,Maria Pinto
+340,13505,San Pedro
+341,13601,Talagante
+342,13602,El Monte
+343,13603,Isla de Maipo
+344,13604,Padre Hurtado
+345,13605,Penaflor
