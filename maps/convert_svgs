@@ -1,0 +1,15 @@
+
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Antofagasta.svg svgs/02.svg -t 72
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Copiapó.svg svgs/03.svg -t 73
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Iquique.svg svgs/01.svg -t 72
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_La_Serena.svg svgs/04.svg -t 72
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Valparaíso.svg svgs/05.svg -t 72
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Navidad.svg svgs/06.svg -t 72
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Curicó.svg svgs/07.svg -t 72
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Concepción.svg svgs/08.svg -t 72
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Temuco.svg svgs/09.svg -t 72
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Puerto_Montt.svg svgs/10.svg -t 73
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Coyhaique.svg svgs/11.svg -t 73
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Punta_Arenas.svg svgs/12.svg -t 73
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Valdivia.svg svgs/14.svg -t 73
+  python3 add_comuna_code_to_svg.py svgs/originals/Comuna_de_Lo_Barnechea.svg svgs/13.svg -t 73

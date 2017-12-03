@@ -1,0 +1,346 @@
+codigo,comuna,pobreza
+1101,Iquique,6.2%
+1107,Alto Hospicio,10.3%
+1401,Pozo Almonte,12.3%
+1402,Camiña,35.3%
+1403,Colchane,33.8%
+1404,Huara,21.5%
+1405,Pica,20.4%
+2101,Antofagasta,3.6%
+2102,Mejillones,6.9%
+2103,Sierra Gorda,13.8%
+2104,Taltal,6.3%
+2201,Calama,3.8%
+2202,Ollagüe,23.5%
+2203,San Pedro De Atacama,14.5%
+2301,Tocopilla,3.1%
+2302,María Elena,8.4%
+3101,Copiapó,5.3%
+3102,Caldera,8.2%
+3103,Tierra Amarilla,9.7%
+3201,Chañaral,10.7%
+3202,Diego De Almagro,6.1%
+3301,Vallenar,8.7%
+3302,Alto Del Carmen,24.7%
+3303,Freirina,10.1%
+3304,Huasco,11.5%
+4101,La Serena,12.8%
+4102,Coquimbo,12.8%
+4103,Andacollo,14.9%
+4104,La Higuera,23.3%
+4105,Paiguano,17.4%
+4106,Vicuña,24.2%
+4201,Illapel,16.4%
+4202,Canela,37.5%
+4203,Los Vilos,24.9%
+4204,Salamanca,19.1%
+4301,Ovalle,15.7%
+4302,Combarbalá,31.0%
+4303,Monte Patria,28.7%
+4304,Punitaqui,25.5%
+4305,Río Hurtado,36.9%
+5101,Valparaíso,16.9%
+5102,Casablanca,19.7%
+5103,Concon,8.7%
+5104,Juan Fernández,9.1%
+5105,Puchuncaví,15.1%
+5107,Quintero,18.9%
+5109,Viña Del Mar,14.0%
+5201,Isla De Pascua,13.3%
+5301,Los Andes,11.9%
+5302,Calle Larga,15.9%
+5303,Rinconada,21.3%
+5304,San Esteban,14.6%
+5401,La Ligua,18.2%
+5402,Cabildo,19.4%
+5403,Papudo,9.0%
+5404,Petorca,27.6%
+5405,Zapallar,21.9%
+5501,Quillota,14.2%
+5502,Calera,23.0%
+5503,Hijuelas,19.1%
+5504,La Cruz,23.5%
+5506,Nogales,16.7%
+5601,San Antonio,18.8%
+5602,Algarrobo,9.7%
+5603,Cartagena,22.6%
+5604,El Quisco,13.7%
+5605,El Tabo,5.1%
+5606,Santo Domingo,10.5%
+5701,San Felipe,12.6%
+5702,Catemu,21.1%
+5703,Llaillay,26.4%
+5704,Panquehue,14.1%
+5705,Putaendo,18.9%
+5706,Santa María,27.0%
+5801,Quilpué,9.6%
+5802,Limache,25.4%
+5803,Olmué,22.8%
+5804,Villa Alemana,12.7%
+6101,Rancagua,13.4%
+6102,Codegua,18.9%
+6103,Coinco,17.6%
+6104,Coltauco,14.4%
+6105,Doñihue,17.1%
+6106,Graneros,13.4%
+6107,Las Cabras,27.8%
+6108,Machali,5.7%
+6109,Malloa,22.1%
+6110,Mostazal,8.4%
+6111,Olivar,15.5%
+6112,Peumo,10.3%
+6113,Pichidegua,24.0%
+6114,Quinta De Tilcoco,19.3%
+6115,Rengo,20.5%
+6116,Requinoa,12.5%
+6117,San Vicente,15.4%
+6201,Pichilemu,15.3%
+6202,La Estrella,13.2%
+6203,Litueche,18.4%
+6204,Marchihue,16.2%
+6205,Navidad,20.2%
+6206,Paredones,33.4%
+6301,San Fernando,17.4%
+6302,Chepica,24.8%
+6303,Chimbarongo,17.7%
+6304,Lolol,30.9%
+6305,Nancagua,19.0%
+6306,Palmilla,22.6%
+6307,Peralillo,20.6%
+6308,Placilla,21.3%
+6309,Pumanque,23.2%
+6310,Santa Cruz,14.7%
+7101,Talca,15.7%
+7102,Constitución,18.7%
+7103,Curepto,39.8%
+7104,Empedrado,17.1%
+7105,Maule,14.9%
+7106,Pelarco,26.5%
+7107,Pencahue,26.5%
+7108,Río Claro,23.4%
+7109,San Clemente,24.3%
+7110,San Rafael,20.2%
+7201,Cauquenes,31.0%
+7202,Chanco,24.9%
+7203,Pelluhue,20.0%
+7301,Curicó,18.8%
+7302,Hualañe,32.2%
+7303,Licantén,23.0%
+7304,Molina,25.8%
+7305,Rauco,29.3%
+7306,Romeral,25.0%
+7307,Sagrada Familia,28.9%
+7308,Teno,29.3%
+7309,Vichuquén,33.9%
+7401,Linares,21.6%
+7402,Colbún,33.9%
+7403,Longaví,20.5%
+7404,Parral,29.5%
+7405,Retiro,23.0%
+7406,San Javier,34.0%
+7407,Villa Alegre,28.1%
+7408,Yerbas Buenas,29.9%
+8101,Concepción,9.7%
+8102,Coronel,20.3%
+8103,Chiguayante,13.9%
+8104,Florida,32.1%
+8105,Hualqui,29.1%
+8106,Lota,20.2%
+8107,Penco,21.5%
+8108,San Pedro De La Paz,23.3%
+8109,Santa Juana,25.2%
+8110,Talcahuano,15.3%
+8111,Tomé,23.0%
+8112,Hualpén,12.9%
+8201,Lebu,30.5%
+8202,Arauco,20.3%
+8203,Cañete,44.7%
+8204,Contulmo,28.0%
+8205,Curanilahue,18.0%
+8206,Los Alamos,24.7%
+8207,Tirúa,36.9%
+8301,Los Ángeles,25.1%
+8302,Antuco,33.3%
+8303,Cabrero,31.4%
+8304,Laja,22.7%
+8305,Mulchén,26.9%
+8306,Nacimiento,30.1%
+8307,Negrete,38.0%
+8308,Quilaco,27.6%
+8309,Quilleco,34.3%
+8310,San Rosendo,25.4%
+8311,Santa Bárbara,31.0%
+8312,Tucapel,29.0%
+8313,Yumbel,22.0%
+8314,Alto Biobío,59.7%
+8401,Chillan,22.6%
+8402,Bulnes,31.3%
+8403,Cobquecura,36.5%
+8404,Coelemu,22.5%
+8405,Coihueco,40.0%
+8406,Chillan Viejo,21.7%
+8407,El Carmen,37.8%
+8408,Ninhue,43.9%
+8409,Ñiquén,33.2%
+8410,Pemuco,29.8%
+8411,Pinto,33.7%
+8412,Portezuelo,30.1%
+8413,Quillón,26.3%
+8414,Quirihue,30.0%
+8415,Ránquil,29.8%
+8416,San Carlos,33.4%
+8417,San Fabián,35.8%
+8418,San Ignacio,39.3%
+8419,San Nicolás,31.6%
+8420,Treguaco,40.4%
+8421,Yungay,30.1%
+9101,Temuco,18.4%
+9102,Carahue,41.9%
+9103,Cunco,34.5%
+9104,Curarrehue,33.0%
+9105,Freire,34.7%
+9106,Galvarino,35.9%
+9107,Gorbea,36.1%
+9108,Lautaro,33.4%
+9109,Loncoche,26.9%
+9110,Melipeuco,42.5%
+9111,Nueva Imperial,50.7%
+9112,Padre Las Casas,30.7%
+9113,Perquenco,50.4%
+9114,Pitrufquén,26.4%
+9115,Pucón,23.3%
+9116,Saavedra,47.1%
+9117,Teodoro Schmidt,47.6%
+9118,Toltén,46.8%
+9119,Vilcún,33.1%
+9120,Villarrica,15.7%
+9121,Cholchol,35.6%
+9201,Angol,14.1%
+9202,Collipulli,34.2%
+9203,Curacautín,26.6%
+9204,Ercilla,44.3%
+9205,Lonquimay,57.1%
+9206,Los Sauces,42.7%
+9207,Lumaco,48.6%
+9208,Purén,36.3%
+9209,Renaico,28.9%
+9210,Traiguén,30.0%
+9211,Victoria,21.7%
+10101,Puerto Montt,15.6%
+10102,Calbuco,30.1%
+10103,Cochamó,29.5%
+10104,Fresia,39.7%
+10105,Frutillar,23.4%
+10106,Los Muermos,21.9%
+10107,Llanquihue,15.2%
+10108,Maullín,19.5%
+10109,Puerto Varas,7.6%
+10201,Castro,12.4%
+10202,Ancud,16.5%
+10203,Chonchi,17.0%
+10204,Curaco De Vélez,33.0%
+10205,Dalcahue,15.0%
+10206,Puqueldón,14.5%
+10207,Queilén,28.4%
+10208,Quellón,15.8%
+10209,Quemchi,17.5%
+10210,Quinchao,20.2%
+10301,Osorno,17.6%
+10302,Puerto Octay,18.6%
+10303,Purranque,23.0%
+10304,Puyehue,23.3%
+10305,Río Negro,23.5%
+10306,San Juan De La Costa,48.2%
+10307,San Pablo,35.5%
+10401,Chaitén,18.9%
+10402,Futaleufú,24.9%
+10403,Hualaihué,29.5%
+10404,Palena,22.5%
+11101,Coyhaique,6.3%
+11102,Lago Verde,17.7%
+11201,Aysén,8.2%
+11202,Cisnes,6.4%
+11203,Guaitecas,29.5%
+11301,Cochrane,10.9%
+11302,O'Higgins,17.7%
+11303,Tortel,26.8%
+11401,Chile Chico,6.3%
+11402,Río Ibáñez,9.2%
+12101,Punta Arenas,4.6%
+12102,Laguna Blanca,14.7%
+12103,Rio Verde,15.8%
+12104,San Gregorio,12.3%
+12201,Cabo De Hornos,13.5%
+12301,Porvenir,2.7%
+12302,Primavera,9.1%
+12303,Timaukel,17.4%
+12401,Natales,13.9%
+12402,Torres Del Paine,13.3%
+13101,Santiago,6.4%
+13102,Cerrillos,6.8%
+13103,Cerro Navia,15.4%
+13104,Conchalí,10.0%
+13105,El Bosque,13.2%
+13106,Estación Central,11.5%
+13107,Huechuraba,5.2%
+13108,Independencia,14.2%
+13109,La Cisterna,7.2%
+13110,La Florida,6.9%
+13111,La Granja,20.0%
+13112,La Pintana,17.0%
+13113,La Reina,1.3%
+13114,Las Condes,1.3%
+13115,Lo Barnechea,4.2%
+13116,Lo Espejo,7.0%
+13117,Lo Prado,7.1%
+13118,Macul,6.1%
+13119,Maipú,3.9%
+13120,Ñuñoa,0.6%
+13121,Pedro Aguirre Cerda,8.0%
+13122,Peñalolén,9.4%
+13123,Providencia,3.0%
+13124,Pudahuel,9.3%
+13125,Quilicura,9.2%
+13126,Quinta Normal,9.5%
+13127,Recoleta,10.7%
+13128,Renca,9.0%
+13129,San Joaquín,5.6%
+13130,San Miguel,4.6%
+13131,San Ramón,9.6%
+13132,Vitacura,0.3%
+13201,Puente Alto,14.6%
+13202,Pirque,2.7%
+13203,San José De Maipo,10.6%
+13301,Colina,7.3%
+13302,Lampa,8.5%
+13303,Tiltil,9.8%
+13401,San Bernardo,17.9%
+13402,Buin,12.1%
+13403,Calera De Tango,13.4%
+13404,Paine,16.7%
+13501,Melipilla,19.5%
+13502,Alhué,19.6%
+13503,Curacaví,7.4%
+13504,María Pinto,14.0%
+13505,San Pedro,26.1%
+13601,Talagante,9.8%
+13602,El Monte,9.6%
+13603,Isla De Maipo,15.4%
+13604,Padre Hurtado,13.2%
+13605,Peñaflor,8.9%
+14101,Valdivia,14.6%
+14102,Corral,24.9%
+14103,Lanco,36.7%
+14104,Los Lagos,25.8%
+14105,Máfil,29.9%
+14106,Mariquina,38.2%
+14107,Paillaco,30.4%
+14108,Panguipulli,31.9%
+14201,La Unión,23.8%
+14202,Futrono,23.8%
+14203,Lago Ranco,39.2%
+14204,Rio Bueno,24.4%
+15101,Arica,14.5%
+15102,Camarones,22.5%
+15201,Putre,29.6%
+15202,General Lagos,33.8%
