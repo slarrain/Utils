@@ -1,0 +1,30 @@
+# Sync calibre library local and remote
+# Antes de Abrir (from remote to local)
+rsync --progress --recursive --verbose -za /media/nas/calibre/ ~/calibre/ --dry-run
+# Despues de cerrado (from local to remote)
+rsync --progress --recursive --verbose -za ~/calibre/ /media/nas/calibre/ --dry-run
+
+
+rsync --ignore-existing --progress --recursive /home/santiago/Videos/drone/* /media/nas/drone --dry-run
+
+# GDrive
+rclone copy --transfers 1 --ignore-existing -v sllarrai:FamiliaLarrainFuenzalida/videos/2018/03 .
+# Error on 03
+
+rclone copy --transfers 1 --ignore-existing -v . sllarrai:drone/2018/ --dry-run
+
+rclone copy --transfers 1 --ignore-existing -v sllarrai:FamiliaLarrainFuenzalida/videos/2017 .
+rclone copy --transfers 1 --ignore-existing -v . sllarrai:FamiliaLarrainFuenzalida/fotos --dry-run
+
+# DRONE
+1.
+Rapid Photo Downloader
+
+2.
+rsync --ignore-existing --progress --recursive /home/santiago/Videos/drone/* /media/nas/drone --dry-run
+
+3.
+ssh nas
+
+4.
+rclone copy --transfers 1 --ignore-existing -v /media/data/drone sllarrai:drone/ --dry-run
