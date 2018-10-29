@@ -5,7 +5,7 @@ rsync --progress --recursive --verbose -za /media/nas/calibre/ ~/calibre/ --dry-
 rsync --progress --recursive --verbose -za ~/calibre/ /media/nas/calibre/ --dry-run
 
 
-rsync --ignore-existing --progress --recursive /home/santiago/Videos/drone/* /media/nas/drone --dry-run
+rsync --ignore-existing --progress --recursive /home/santiago/Videos/2018/* /media/nas/FamiliaLarrainFuenzalida/videos/2018/ --dry-run
 
 # GDrive
 rclone copy --transfers 1 --ignore-existing -v sllarrai:FamiliaLarrainFuenzalida/videos/2018/03 .
@@ -28,3 +28,11 @@ ssh nas
 
 4.
 rclone copy --transfers 1 --ignore-existing -v /media/data/drone sllarrai:drone/ --dry-run
+
+# Copy Videos
+rclone copy --transfers 1 --ignore-existing -v /media/data/FamiliaLarrainFuenzalida/videos/2018/ sllarrai:FamiliaLarrainFuenzalida/videos/2018/ --dry-run
+
+# Copy Fotos
+rclone copy --transfers 1 --ignore-existing -v /media/data/FamiliaLarrainFuenzalida/fotos/2018/ sllarrai:FamiliaLarrainFuenzalida/fotos/2018/ --dry-run
+
+# rclone copy --transfers 1 --ignore-existing -v sllarrai:FamiliaLarrainFuenzalida/fotos/2018/ /media/data/FamiliaLarrainFuenzalida/fotos/2018/ --dry-run
