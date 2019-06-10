@@ -5,7 +5,8 @@ rsync --progress --recursive --verbose -za /media/nas/calibre/ ~/calibre/ --dry-
 rsync --progress --recursive --verbose -za ~/calibre/ /media/nas/calibre/ --dry-run
 
 
-rsync --ignore-existing --progress --recursive /home/santiago/Videos/2018/* /media/nas/FamiliaLarrainFuenzalida/videos/2018/ --dry-run
+rsync --ignore-existing --progress --recursive /home/santiago/Videos/2019/* /media/nas/FamiliaLarrainFuenzalida/videos/2019/ --dry-run
+rsync --ignore-existing --progress --recursive /home/santiago/Pictures/2019/* /media/nas/FamiliaLarrainFuenzalida/fotos/2019/ --dry-run
 
 # GDrive
 rclone copy --transfers 1 --ignore-existing -v sllarrai:FamiliaLarrainFuenzalida/videos/2018/03 .
@@ -30,9 +31,17 @@ ssh nas
 rclone copy --transfers 1 --ignore-existing -v /media/data/drone sllarrai:drone/ --dry-run
 
 # Copy Videos
-rclone copy --transfers 1 --ignore-existing -v /media/data/FamiliaLarrainFuenzalida/videos/2018/ sllarrai:FamiliaLarrainFuenzalida/videos/2018/ --dry-run
+rclone copy --transfers 1 --ignore-existing -v /media/data/FamiliaLarrainFuenzalida/videos/ sllarrai:FamiliaLarrainFuenzalida/videos/ --dry-run
 
 # Copy Fotos
-rclone copy --transfers 1 --ignore-existing -v /media/data/FamiliaLarrainFuenzalida/fotos/2018/ sllarrai:FamiliaLarrainFuenzalida/fotos/2018/ --dry-run
+rclone copy --transfers 1 --ignore-existing -v /media/data/FamiliaLarrainFuenzalida/fotos/ sllarrai:FamiliaLarrainFuenzalida/fotos/ --dry-run
+
+# Ambos
+rclone copy --transfers 1 --ignore-existing -v /media/data/FamiliaLarrainFuenzalida/fotos/ sllarrai:FamiliaLarrainFuenzalida/fotos/ && rclone copy --transfers 1 --ignore-existing -v /media/data/FamiliaLarrainFuenzalida/videos/ sllarrai:FamiliaLarrainFuenzalida/videos/
 
 # rclone copy --transfers 1 --ignore-existing -v sllarrai:FamiliaLarrainFuenzalida/fotos/2018/ /media/data/FamiliaLarrainFuenzalida/fotos/2018/ --dry-run
+
+# Once from Elements
+rsync --ignore-existing --progress --recursive /media/santiago/Elements/Canon/2018/11/*/*.JPG /media/nas/FamiliaLarrainFuenzalida/fotos/2018/11 && rsync --ignore-existing --progress --recursive /media/santiago/Elements/Canon/2018/12/*/*.JPG /media/nas/FamiliaLarrainFuenzalida/fotos/2018/12 && rsync --ignore-existing --progress --recursive /media/santiago/Elements/Canon/2019/01/*/*.JPG /media/nas/FamiliaLarrainFuenzalida/fotos/2019/01 && rsync --ignore-existing --progress --recursive /media/santiago/Elements/Canon/2019/02/*/*.JPG /media/nas/FamiliaLarrainFuenzalida/fotos/2019/02
+
+rsync --ignore-existing --progress --recursive /media/santiago/Elements/Canon/2018/12/*/*.MP4 /media/nas/FamiliaLarrainFuenzalida/videos/2018/12 && rsync --ignore-existing --progress --recursive /media/santiago/Elements/Canon/2019/01/*/*.MP4 /media/nas/FamiliaLarrainFuenzalida/videos/2019/01 && rsync --ignore-existing --progress --recursive /media/santiago/Elements/Canon/2019/02/*/*.MP4 /media/nas/FamiliaLarrainFuenzalida/videos/2019/02
