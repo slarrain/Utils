@@ -35,6 +35,8 @@ facts.end_time = pd.to_datetime(facts.end_time)
 
 facts['duration'] = (facts.end_time - facts.start_time)/ pd.np.timedelta64(1, 'h')
 df3 = activities.merge(categories, left_on='category_id', right_on='id')
+
+# TODO: FIX BUG .last("1M") returns 1 month, not what we have from this month.
 df2 = facts.set_index("start_time").last("1M")
 df = df2.reset_index().merge(activities[['id', 'category_id']],right_on='id', left_on='activity_id')
 actual = df.groupby('category_id')['duration'].sum().to_dict()
