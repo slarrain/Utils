@@ -48,11 +48,22 @@ total_mes = sum(base.values())
 for empresa in base:
     suma += actual[empresa]
     base[empresa] -= actual[empresa]
+hoy = df.set_index("start_time").sort_index().last("1D")
+hoy_horas = hoy.loc[hoy.category_id.isin(base.keys()), :].duration.sum()
 horas_left = total_mes- suma
+horas_left = sum(base[empresa] for empresa in base if base[empresa] > 0)
 bdays_left = len(pd.bdate_range(pd.datetime.now().date()+pd.Timedelta(days=1), pd.datetime.now().date()+pd.tseries.offsets.MonthEnd(0)))
-horas_por_dia = horas_left/bdays_left
+bdays_left_hoy = len(pd.bdate_range(pd.datetime.now().date(), pd.datetime.now().date()+pd.tseries.offsets.MonthEnd(0)))
+horas_por_dia = horas_left/bdays_left if bdays_left > 0 else 0
+horas_por_dia_hoy = horas_left/bdays_left_hoy if bdays_left_hoy > 0 else 0
 
-print ("Horas: {:.1f} - Por dia: {:.1f}".format(horas_left, horas_por_dia))
+first_string = """Mes: :watch: {:.1f} - Diario: :hourglass: {:.1f} - Hoy: :clock4:{:.1f}
+""".format(
+    horas_left, 
+    horas_por_dia, 
+    hoy_horas
+    )
+print (first_string)
 print("---")
 for x in base:
     print ("{}: {:.1f}".format(names[x], base[x]))
