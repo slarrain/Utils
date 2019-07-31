@@ -11,11 +11,11 @@ cnx = sqlite3.connect(db)
 
 # meses since Julio
 start_date = '2019-07-01'
-duracion = len(pd.date_range(start_date, pd.datetime.now(), freq='1M', closed='left')) + 1
+duracion = len(pd.date_range(start_date, pd.datetime.today().strftime("%Y-%m-%d"), freq='1M', closed='left')) + 1
 base_original = {
     2: 25*duracion,
     8: 20*duracion,
-    12: 22*duracion
+    # 12: 22*duracion
 }
 
 # Excepcion 
@@ -54,7 +54,7 @@ for empresa in base:
         suma += actual[empresa]
         base[empresa] -= actual[empresa]
 hoy = df.set_index("start_time").sort_index()#.last("1D")
-hoy = hoy[hoy.index.date == pd.datetime.now().date]
+hoy = hoy[hoy.index.date == pd.datetime.now().date()]
 hoy_horas = hoy.loc[hoy.category_id.isin(base.keys()), :].duration.sum()
 horas_left = total_mes- suma
 horas_left = sum(base[empresa] for empresa in base if base[empresa] > 0)
