@@ -10,7 +10,7 @@ def check_exists():
     my_files = glob(DEST_PREFIX + 'fotos/*/*/*') + glob(DEST_PREFIX + 'videos/*/*/*') 
     print ("All: {}\nMine: {}".format(len(all_files), len(my_files)))
 
-    result = [f.split('/')[0] for f in all_files if f in [g.split('/') for g in my_files]]
+    result = [f.split('/')[0] for f in all_files if f in [g.split('/')[0] for g in my_files]]
     print (result)
 
 
