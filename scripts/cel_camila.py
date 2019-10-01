@@ -38,7 +38,7 @@ def main():
             print ("ERROR --> {}".format(filename))
             exit(1)
         src = path
-        dst = DEST_PREFIX + ano + '/' + mes + '/' + filename        
+        dst = DEST_PREFIX + '/' + tipo + '/' + ano + '/' + mes + '/' + filename        
         print ("{} \t {}".format(src, dst))
         # copy2(src=src, dst=dst, follow_symlinks=False)
 
