@@ -40,7 +40,7 @@ def main():
         src = path
         dst = DEST_PREFIX + '/' + tipo + '/' + ano + '/' + mes + '/' + filename        
         print ("{} \t {}".format(src, dst))
-        # copy2(src=src, dst=dst, follow_symlinks=False)
+        copy2(src=src, dst=dst, follow_symlinks=False)
 
 if __name__ == "__main__":
     main()
