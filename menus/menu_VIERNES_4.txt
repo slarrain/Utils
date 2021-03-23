@@ -1,0 +1,16 @@
+			VIERNES
+Almuerzo:		Ravioles
+Comida:  		Papas Dijon
+
+			SABADO
+Almuerzo:		Arroz con Huevo
+Comida:  		pizza
+
+			DOMINGO
+Almuerzo:		Pollo asado
+Comida:  		Pure con Huevo
+
+			LUNES
+Almuerzo:		porotos granados
+Comida:  		Carne a la Cacerola
+

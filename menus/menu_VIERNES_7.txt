@@ -1,0 +1,28 @@
+			VIERNES
+Almuerzo:		pizza
+Comida:  		Carne a la Cacerola
+
+			SABADO
+Almuerzo:		Carne con Papas a la Crema
+Comida:  		Arroz con Huevo
+
+			DOMINGO
+Almuerzo:		Pollo asado
+Comida:  		Pure con Huevo
+
+			LUNES
+Almuerzo:		porotos granados
+Comida:  		Lentejas con Papas Fritas
+
+			MARTES
+Almuerzo:		Ravioles
+Comida:  		fricase
+
+			MIERCOLES
+Almuerzo:		Churrasquito
+Comida:  		Pure con Chancho
+
+			JUEVES
+Almuerzo:		Papas Dijon
+Comida:  		raclett
+
