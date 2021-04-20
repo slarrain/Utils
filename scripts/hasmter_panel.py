@@ -10,12 +10,14 @@ db = "/home/santiago/Dropbox/hamster-applet/hamster.db"
 cnx = sqlite3.connect(db)
 
 # meses since Julio
-start_date = '2019-07-01'
+# start_date = '2019-07-01'
+start_date = '2021-04-01'
 duracion = len(pd.date_range(start_date, pd.datetime.today().strftime("%Y-%m-%d"), freq='1M', closed='left')) + 1
 base_original = {
-    2: 25*duracion,
-    8: 20*duracion,
-    # 12: 22*duracion
+    'SECOM': 45*duracion,
+    'Ariztia': 50*duracion,
+    'Koyle': 30-(11.3+5.5),
+    'RetailCompass': 22.5*duracion
 }
 
 # Excepcion 
@@ -38,6 +40,7 @@ facts.end_time = pd.to_datetime(facts.end_time)
 
 facts['duration'] = (facts.end_time - facts.start_time)/ pd.np.timedelta64(1, 'h')
 df3 = activities.merge(categories, left_on='category_id', right_on='id')
+dict_nombre_codigo = df3[['id_y', 'name_y']].drop_duplicates().set_index('name_y').to_dict()['id_y']
 
 df2 = facts.set_index("start_time").sort_index()#.last("1M")
 # df2 = df2[(df2.index.month == pd.datetime.now().month) & (df2.index.year == pd.datetime.now().year)]
@@ -45,7 +48,10 @@ df2 = df2[df2.index >= start_date]
 df = df2.reset_index().merge(activities[['id', 'category_id']],right_on='id', left_on='activity_id')
 actual = df.groupby('category_id')['duration'].sum().to_dict()
 
-base = base_original.copy()
+# base = base_original.copy()
+base = {}
+for name in base_original:
+    base[dict_nombre_codigo[name]] = base_original[name]
 names = df3[['id_y', 'name_y']].drop_duplicates().set_index('id_y')['name_y'].to_dict()
 suma = 0
 total_mes = sum(base.values())
