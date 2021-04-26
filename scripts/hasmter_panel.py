@@ -14,7 +14,7 @@ cnx = sqlite3.connect(db)
 start_date = '2021-04-01'
 duracion = len(pd.date_range(start_date, pd.datetime.today().strftime("%Y-%m-%d"), freq='1M', closed='left')) + 1
 base_original = {
-    'SECOM': 45*duracion,
+    'SECOM': 40*duracion-12-15,
     'Ariztia': 50*duracion,
     'Koyle': 30-(11.3+5.5),
     'RetailCompass': 22.5*duracion
