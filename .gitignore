@@ -1,3 +1,4 @@
 .ipynb_checkpoints/
 credentials.ini
 fintual.tar.gz
+__pycache__

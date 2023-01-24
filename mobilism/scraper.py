@@ -16,16 +16,32 @@ from sqlalchemy import create_engine
 def scrape_book_list():
 
     url = "https://forum.mobilism.me/viewforum.php?f=19&start={}"
-    
+    links = get_links_set()    
     data = []
-    for i in tqdm(range(5, 1125760, 40)):
-        
+    fin = 40000
+    for i in tqdm(range(5, fin, 40)):
         try:
-            data.append(process_single_page(url.format(i)))
+            x = process_single_page(url.format(i))
+            local_links = {z['link'].replace('./', 'https://forum.mobilism.me/').split('&sid=')[0] for z in x}
+            dif = local_links.difference(links)
+            if dif.issubset(links):
+                tqdm.write ("todos repetidos")
+                break
+            if len(dif) < len(local_links):
+                x = [y for y in x if y['link'].replace('./', 'https://forum.mobilism.me/').split('&sid=')[0] in dif]
+                data.append(x)
+            else:
+                data.append(x)
         except:
             tqdm.write(url.format(i))
-
     save_data(list(chain.from_iterable(data)))
+
+
+def get_links_set():
+    engine = get_engine()
+    df = pd.read_sql_table('mobilism_book_list', engine.connect(), )
+    links = set(df.link.str.split('&sid=').apply(lambda x: x[0]))
+    return links
 
 
 def process_single_page(url):
@@ -47,6 +63,7 @@ def process_single_page(url):
     return rv
 
 def save_data(lista):
+    print (f"Largo lista: {len(lista)}")
     with open("listado_libros.json", 'w') as f:
         json.dump(lista, f, indent=2)
 
@@ -103,7 +120,9 @@ def procesar_descargados():
 
     return df
 
-def send_to_db(df):
+
+def get_engine():
+
     config = configparser.ConfigParser()
     config.read('./credentials.ini')
 
@@ -122,8 +141,14 @@ def send_to_db(df):
         # port=port,
         # database=database
         # )
-    print ("Sending to DB")
+    return engine
 
+
+def send_to_db(df):
+
+    engine = get_engine()
+    print ("Sending to DB")
+    print (f"DF Length: {len(df)}")
     df.to_sql(
             name="mobilism_book_list",
             con=engine.connect(),
@@ -132,10 +157,76 @@ def send_to_db(df):
             )
 
 
+def get_data():
+    engine = get_engine()
+    df = pd.read_sql_table('mobilism_book_list', con=engine.connect(), )
+
+    df = df[df.formato.apply(lambda x: 'MP3' != x)]  # Remove audiobooks
+
+    return df
+
+
+def get_book_link(link):
+    r = requests.get(link)
+    soup = BeautifulSoup(r.text, 'html5')
+    links = soup.find_all('a', class_='postlink')
+    return [x.get('href') for x in links if not x.get('href').startswith("https://forum.mobilism.org/")]
+
+
+def scrape_books_links():
+    df = get_data()
+    
+    data = []
+    for hyperl in tqdm(df.link.tolist()):
+        try:
+            lista = get_book_link(hyperl)
+            data.append([hyperl, lista])
+        except Exception as e:
+            tqdm.write(e)
+            tqdm.write(hyperl)
+
+        # ### REMOVE ###
+        # if len(data) >= 200:
+            # break
+        # ### REMOVE ###
+
+
+    print ("Saving links...")
+
+    try:
+        save_links(data)
+    except Exception as e:
+        print (e)
+
+    df2 = pd.DataFrame(data, columns=['webpage', 'link']).explode('link')
+
+    print("To DB...")
+
+    engine = get_engine()
+
+    df2.to_sql(
+            name="mobilism_book_links",
+            con=engine.connect(),
+            if_exists='append',
+            index=False,
+            )
+
+
+def save_links(data):
+    with open("links.txt", "w") as fp:
+        json.dump(data, fp)
+
+
 def main(args):
     if args.scrape:
         scrape_book_list()
     elif args.todb:
+        df = procesar_descargados()
+        send_to_db(df)
+    elif args.links:
+        scrape_books_links()
+    elif args.all:
+        scrape_book_list()
         df = procesar_descargados()
         send_to_db(df)
 
@@ -152,6 +243,18 @@ if __name__ == '__main__':
             "-d",
             "--todb",
             help="Process and Send to DB",
+            action='store_true',
+            )
+    parser.add_argument(
+            "-l",
+            "--links",
+            help="Scrape books links AND sends to DB",
+            action='store_true',
+            )
+    parser.add_argument(
+            "-a",
+            "--all",
+            help="Performs the scrape, process AND sends to DB",
             action='store_true',
             )
     args = parser.parse_args()
