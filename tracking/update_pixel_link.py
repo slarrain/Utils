@@ -46,7 +46,7 @@ if __name__ == '__main__':
             subject = line.strip().split('Subject: ')[-1]
             print (subject)
 
-        if 'To: ' in line:
+        if 'To: ' in line and 'In-Reply-To:' not in line:
             to = line.strip().split('To: ')[-1]
             print (to)
         if "Date: " in line:
