@@ -58,6 +58,7 @@ if __name__ == '__main__':
         if pre_url in line:
             url = line.strip().split('src=3D"')[-1].split('/track')[0]
             print (url)
+            break
 
     send_to_mariadb_nodered_api_update(url, mid, subject, to, fecha)
 
