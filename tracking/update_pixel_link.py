@@ -3,6 +3,8 @@ import sys
 import json
 import urllib.request
 from datetime import datetime, timezone
+from email.header import decode_header
+
 
 def send_to_mariadb_nodered_api_update(url, mid, subject, to, fecha):
 
@@ -39,17 +41,24 @@ def send_to_mariadb_nodered_api_update(url, mid, subject, to, fecha):
 
 if __name__ == '__main__':
     for line in sys.stdin:
-        if 'Message-ID: <' in line:
+        if line.startswith('Message-ID: <'):
             mid = line.strip().split('<')[-1][:-1]
             print (mid)
-        if 'Subject: ' in line:
-            subject = line.strip().split('Subject: ')[-1]
-            print (subject)
+        if line.startswith('Subject: '):
+            subject = line.strip().split('Subject: ')[-1]#.encode('utf-8')
+            # Decode the string
+            decoded_parts = decode_header(subject)
 
-        if 'To: ' in line and 'In-Reply-To:' not in line:
+            # Reconstruct the decoded string
+            subject = ''.join(
+                part.decode(encoding or 'utf-8') if isinstance(part, bytes) else part
+                for part, encoding in decoded_parts
+            )
+            print (subject)
+        if line.startswith('To: ' ) and 'In-Reply-To:' not in line:
             to = line.strip().split('To: ')[-1]
             print (to)
-        if "Date: " in line:
+        if line.startswith("Date: "):
             fecha = line.strip().split("Date: ")[-1]
             print (fecha)
             fecha = datetime.strptime(fecha.strip(), '%a, %d %b %Y %H:%M:%S %z').astimezone(timezone.utc).replace(tzinfo=None)
