@@ -12,9 +12,11 @@ app8="kitty --title TASKWARRIOR"
 
 
 # Start the applications in the background
-#$app1 &
-$app1 &
 $app2 &
+#sleep 2
+#wmctrl -r "Firefox" -e 0,5120,2224,2560,1408
+
+$app1 &
 $app3 &
 $app4 &
 $app5 &
@@ -22,30 +24,30 @@ $app6 &
 $app7 &
 
 # Wait for a short period to ensure the applications launch
-sleep 3
+sleep 5
 
 # Kitty No task
 wmctrl -r "santiago@TheBeast:~" -e 0,1290,1162,1280,1403
 
-#ZapZap
-wmctrl -r "ZapZap" -e 0,5130,2122,1080,923
+## Firefox principal
+#wmctrl -r "Heimdall" -e 0,5120,2224,2560,1408
 
-# Telegram
-wmctrl -r "Telegram" -e 0,10222,2144,1098,978
+##ZapZap
+#wmctrl -r "ZapZap" -e 0,5130,2122,1080,923
 
-# Slack
-wmctrl -r "Slack" -e 0,5130,1162,1080,923
+## Telegram
+#wmctrl -r "Telegram" -e 0,10222,2144,1098,978
 
-# Firefox principal
-wmctrl -r "Heimdall" -e 0,5120,2224,2560,1408
+## Slack
+#wmctrl -r "Slack" -e 0,5130,1162,1080,923
 
-#Firefox dashboards
+##Firefox dashboards
 wmctrl -r "Grafana" -e 0,3066,0,1920,1080
 
 #Evolution
-wmctrl -r "Inbox" -e 0,-40,2120,1320,1480
+wmctrl -r "Mail" -e 0,-40,2120,1320,1480
 
-# Kitty taskwarrior
+## Kitty taskwarrior
 $app8 &
 sleep 1
 
