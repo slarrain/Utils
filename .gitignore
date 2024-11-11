@@ -2,3 +2,4 @@
 credentials.ini
 fintual.tar.gz
 __pycache__
+.venv/
