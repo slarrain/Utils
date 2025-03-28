@@ -16,10 +16,10 @@ from pathlib import Path
 def process_email(file_path):
     
     # TODO: Remove creds
-    url = 'http://192.168.1.122:8069'
+    url = 'http://192.168.1.50:8069'
     db = 'pacificlabs'
     username = 'santiagolarrain@pacificlabs.cl'
-    password = 'sl2012le2187'
+    password = ''
     common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(url))
     common.version()
 
@@ -36,7 +36,14 @@ def process_email(file_path):
     date = msg['date']
     body = extract_body(msg)
     contenido = f"Subject:{subject}\nFrom:{from_email}\nTo:{to_email}\nDate:{date}\n\n{body}".replace('\n', '<br>')
-    direcciones = extract_emails(to_email)
+    try:
+        direcciones = extract_emails(to_email)
+        if 'cc' in msg:
+            direcciones.extend(extract_emails(msg['cc']))
+    except TypeError:
+        logger.error("No Data on Direcciones. Probably an answer to a Meeting. Deleting.")
+        delete_file(file_path)
+        return
     date2 = datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %z").strftime("%Y-%m-%d %H:%M:%S")
 
     for direccion in direcciones:
@@ -92,26 +99,41 @@ def delete_file(file_path):
 
 def extract_body(msg):
 
-    # Extract the body of the email
-    if msg.is_multipart():
-        # If the email has multiple parts (attachments, text, etc.), iterate over the parts
-        for part in msg.iter_parts():
+    # # Extract the body of the email
+    # if msg.is_multipart():
+        # # If the email has multiple parts (attachments, text, etc.), iterate over the parts
+        # for part in msg.iter_parts():
 
-            # If it is a multipart in itself
-            if part.is_multipart():
-                for sub_part in part.iter_parts():
-                    if sub_part.get_content_type() == 'text/plain':
-                        body = sub_part.get_payload(decode=True).decode(sub_part.get_content_charset())        
-            else:
-                # Look for the plain text part
-                if part.get_content_type() == 'text/plain':
-                    body = part.get_payload(decode=True).decode(part.get_content_charset())
-    else:
-        # If the email is not multipart, get the payload directly
-        body = msg.get_payload(decode=True).decode(msg.get_content_charset())
+            # # If it is a multipart in itself
+            # if part.is_multipart():
+                # for sub_part in part.iter_parts():
+                    # if sub_part.get_content_type() == 'text/plain':
+                        # body = sub_part.get_payload(decode=True).decode(sub_part.get_content_charset())        
+            # else:
+                # # Look for the plain text part
+                # if part.get_content_type() == 'text/plain':
+                    # body = part.get_payload(decode=True).decode(part.get_content_charset())
+    # else:
+        # try:
+            # # If the email is not multipart, get the payload directly
+            # body = msg.get_payload(decode=True).decode(msg.get_content_charset())
+        # except TypeError:
+            # body = "No Body: Probably a Meeting."
 
+    body = get_body(msg)
     body = body.split('--')[0]
     return body
+
+
+def get_body(msg):
+    if not msg.is_multipart() and msg.get_content_type() == 'text/plain':
+        try:
+            return msg.get_payload(decode=True).decode(msg.get_content_charset())
+        except TypeError:
+            return "No Body. Probably a Meeting."
+    elif msg.is_multipart():
+        for part in msg.iter_parts():
+            return get_body(part)
 
 
 def load_email_file(file_path):
@@ -146,13 +168,13 @@ if __name__ == '__main__':
 	
     parser = argparse.ArgumentParser()
     parser.add_argument('--file-path', type=str, help = "Archivo de correo individual a procesar")
-    parser.add_argument('--data-threshold', type=int, default=40, help='Cantidad mínima de datos que debe tener una serie de tiempo')
-    parser.add_argument('--unique-clients', default=200, help='Tamaño del subconjunto de clientes unicos. None para usar el conjunto completo.')
-    parser.add_argument('--nb-clusters', type = int, default=8, help='Cantidad de clusters a utilizar en algoritmo K-Means.')
-    parser.add_argument('--img-folder', type = str, default = '/home/user/Pictures', help= 'Carpeta en donde se guardará el gráfico generado.')
-    parser.add_argument('--img-name', type = str, default='cluster-example.pdf', help= 'Nombre de la imagen a guardar, debe contener el formato.')
-    parser.add_argument('--nb-jobs', type=int, default=-2, help = 'número de núcleos para ejecutar k-means.')
-    parser.add_argument('--csv-folder', type = str, default='../data/', help="Carpeta en donde se guardara el archivop .csv")
-    parser.add_argument('--csv-name',type=str, default='clients_labels.csv', help="Nombre del archivo .csv de los ids clientes con sus clusters")
+    # parser.add_argument('--data-threshold', type=int, default=40, help='Cantidad mínima de datos que debe tener una serie de tiempo')
+    # parser.add_argument('--unique-clients', default=200, help='Tamaño del subconjunto de clientes unicos. None para usar el conjunto completo.')
+    # parser.add_argument('--nb-clusters', type = int, default=8, help='Cantidad de clusters a utilizar en algoritmo K-Means.')
+    # parser.add_argument('--img-folder', type = str, default = '/home/user/Pictures', help= 'Carpeta en donde se guardará el gráfico generado.')
+    # parser.add_argument('--img-name', type = str, default='cluster-example.pdf', help= 'Nombre de la imagen a guardar, debe contener el formato.')
+    # parser.add_argument('--nb-jobs', type=int, default=-2, help = 'número de núcleos para ejecutar k-means.')
+    # parser.add_argument('--csv-folder', type = str, default='../data/', help="Carpeta en donde se guardara el archivop .csv")
+    # parser.add_argument('--csv-name',type=str, default='clients_labels.csv', help="Nombre del archivo .csv de los ids clientes con sus clusters")
     parser = parser.parse_args() 
     main(parser) 
