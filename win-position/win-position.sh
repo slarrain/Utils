@@ -136,7 +136,11 @@ firefox \
 kitty --class kitty-center --session ~/.config/kitty/sessions/center.conf &
 
 # RIGHT screen: Chrome (Grafana clientes) + ZapZap
-google-chrome --new-window "http://192.168.1.200:3010/d/bf0xx4tnpz9j4b/clientes" &
+google-chrome --new-window \
+  "http://192.168.1.200:3010/d/bf0xx4tnpz9j4b/clientes?kiosk=&from=now%2Fd&to=now%2Fd&timezone=browser&refresh=15m" \
+  "http://192.168.1.200:3010/d/aeu44bmnzka9sf/poderrores?from=now%2Fd&to=now%2Fd&timezone=browser" \
+  "http://192.168.1.200:3010/d/cfetf9a9mheyoc/twenty-crm-sales-pipeline?from=2026-03-01&to=now&timezone=browser" \
+  "http://192.168.1.200:3010/d/af0z1amax3abkf/bigpicture?from=now-6M&to=now&timezone=browser" &
 flatpak run com.rtosta.zapzap &
 
 # Wait for Chrome clientes window to register before launching more
