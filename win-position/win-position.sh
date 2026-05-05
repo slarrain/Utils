@@ -126,6 +126,7 @@ chrome_ids_before_right=$(get_window_ids "google-chrome")
 flatpak run org.gnome.Evolution &
 firefox \
     "http://192.168.1.200:8888/" \
+    "https://pacificlabs.twenty.com/objects/opportunities?viewId=ab24bb32-e629-4861-a8a9-b4c57f05ff37" \
     "https://console.cloud.google.com/billing/019BEF-B7278C-58A38B/reports?project=gen-lang-client-0865353638" \
     "https://github.com/slarrain/titularia" \
     "https://supabase.com/dashboard/project/zypldbjwbkccwfqlatgl" \
