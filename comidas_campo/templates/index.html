@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Eventos — Comidas Campo{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2>¿Quién eres?</h2>
+  {% if families %}
+    <form method="post" action="{{ url_for('set_family') }}" class="inline-form">
+      <input type="hidden" name="next" value="{{ url_for('index') }}">
+      <select name="family_id" aria-label="Selecciona tu familia">
+        <option value="">— Selecciona tu familia —</option>
+        {% for f in families %}
+          <option value="{{ f.id }}" {% if current_family and current_family.id == f.id %}selected{% endif %}>{{ f.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="primary">Soy esta familia</button>
+    </form>
+    {% if current_family %}<p class="muted">Estás registrando datos como <strong>{{ current_family.name }}</strong>.</p>{% endif %}
+  {% else %}
+    <p class="muted">Todavía no hay familias. {% if session.is_admin %}<a href="{{ url_for('admin_families') }}">Agrega familias</a>.{% else %}Pídele al administrador que agregue las familias.{% endif %}</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="row-between">
+    <h2>Eventos</h2>
+    {% if session.is_admin %}<a class="btn primary" href="{{ url_for('new_event') }}">+ Crear evento</a>{% endif %}
+  </div>
+
+  {% if events %}
+    <ul class="event-list">
+      {% for e in events %}
+        <li>
+          <a href="{{ url_for('event_detail', eid=e.id) }}">
+            <span class="event-name">{{ e.name }}</span>
+            <span class="muted">{{ e.start_date|fecha }} – {{ e.end_date|fecha }} · {{ e.num_days }} día(s)</span>
+          </a>
+          {% if e.is_open %}
+            <span class="badge badge-open">Abierto</span>
+          {% else %}
+            <span class="badge badge-closed">Cerrado</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No hay eventos todavía. {% if session.is_admin %}Crea el primero.{% else %}El administrador aún no crea ninguno.{% endif %}</p>
+  {% endif %}
+</div>
+
+{% endblock %}

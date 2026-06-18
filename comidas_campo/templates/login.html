@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Ingresar — Comidas Campo{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>🏡 Comidas Campo</h1>
+  <p class="muted">Ingresa la contraseña para registrar comidas y dividir las cuentas del campo.</p>
+  <form method="post" action="{{ url_for('login') }}">
+    <label for="password">Contraseña</label>
+    <input type="password" id="password" name="password" autofocus required>
+    <button type="submit" class="primary">Ingresar</button>
+  </form>
+</div>
+{% endblock %}

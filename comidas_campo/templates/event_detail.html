@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }} — Comidas Campo{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="row-between">
+    <div>
+      <h1>{{ event.name }}</h1>
+      <p class="muted">{{ event.start_date|fecha }} – {{ event.end_date|fecha }} · {{ event.num_days }} día(s)</p>
+    </div>
+    {% if event.is_open %}
+      <span class="badge badge-open">Abierto</span>
+    {% else %}
+      <span class="badge badge-closed">Cerrado</span>
+    {% endif %}
+  </div>
+
+  <div class="actions">
+    {% if current_part %}
+      <a class="btn primary" href="{{ url_for('participation', eid=event.id) }}">Mi participación</a>
+    {% elif current_family %}
+      <p class="muted">Tu familia ({{ current_family.name }}) no participa en este evento.</p>
+    {% else %}
+      <p class="muted">Selecciona tu familia en la <a href="{{ url_for('index') }}">página de inicio</a> para registrar datos.</p>
+    {% endif %}
+
+    <a class="btn" href="{{ url_for('event_audit', eid=event.id) }}">Ver detalle de todas las familias</a>
+
+    {% if not event.is_open or is_admin %}
+      <a class="btn" href="{{ url_for('settlement', eid=event.id) }}">
+        Ver liquidación{% if event.is_open %} (vista previa){% endif %}
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Familias participantes</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Familia</th>
+        <th>Estado</th>
+        {% if is_admin %}<th class="num">Persona-días</th><th class="num">Gastado</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in parts %}
+        <tr {% if p.family_id == current_fid %}class="me"{% endif %}>
+          <td>{{ p.family.name }}{% if p.family_id == current_fid %} <span class="muted">(tú)</span>{% endif %}</td>
+          <td>
+            {% if p.submitted %}
+              <span class="badge badge-open">Completado</span>
+            {% else %}
+              <span class="badge badge-pending">Pendiente</span>
+            {% endif %}
+          </td>
+          {% if is_admin %}
+            <td class="num">{{ pd_map.get(p.family_id, 0) }}</td>
+            <td class="num">{{ paid_map.get(p.family_id, 0)|clp }}</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not is_admin %}
+    <p class="muted">Para revisar la asistencia y los gastos de todas las familias, abre el
+      <a href="{{ url_for('event_audit', eid=event.id) }}">detalle</a>. La liquidación
+      (quién le paga a quién) se mostrará cuando el administrador cierre el evento.</p>
+  {% endif %}
+</div>
+
+{% if is_admin %}
+<div class="card card-admin">
+  <h2>Administración</h2>
+  {% if event.is_open %}
+    <form method="post" action="{{ url_for('close_event', eid=event.id) }}"
+          onsubmit="return confirm('¿Cerrar el evento? Las familias ya no podrán editar y se mostrará la liquidación.');">
+      <button type="submit" class="primary">Cerrar evento y publicar liquidación</button>
+    </form>
+    <p class="muted">Ciérralo cuando todas las familias hayan marcado su participación como completada.</p>
+  {% else %}
+    <form method="post" action="{{ url_for('reopen_event', eid=event.id) }}"
+          onsubmit="return confirm('¿Reabrir el evento para editar?');">
+      <button type="submit">Reabrir evento</button>
+    </form>
+    <p class="muted">Reábrelo si alguna familia necesita corregir sus datos.</p>
+  {% endif %}
+
+  <h3>Participantes</h3>
+  <form method="post" action="{{ url_for('update_participants', eid=event.id) }}"
+        onsubmit="return confirm('Si quitas una familia, se borrarán su asistencia y sus gastos en este evento. ¿Continuar?');">
+    <div class="checkbox-list">
+      {% for f in manage_families %}
+        <label class="check">
+          <input type="checkbox" name="families" value="{{ f.id }}" {% if f.id in participant_ids %}checked{% endif %}>
+          {{ f.name }}{% if not f.active %} <span class="muted">(inactiva)</span>{% endif %}
+        </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="primary">Guardar participantes</button>
+  </form>
+  <p class="muted">Marca las familias que participan. Quitar una elimina sus datos de este evento.</p>
+
+  <h3>Eliminar evento</h3>
+  <form method="post" action="{{ url_for('delete_event', eid=event.id) }}"
+        onsubmit="return confirm('¿Eliminar este evento y TODOS sus datos (asistencia, gastos, participantes)? Esta acción no se puede deshacer.');">
+    <button type="submit" class="danger">Eliminar evento</button>
+  </form>
+  <p class="muted">Borra el evento por completo. No se puede deshacer.</p>
+</div>
+{% endif %}
+
+<p><a href="{{ url_for('index') }}">← Volver a eventos</a></p>
+{% endblock %}

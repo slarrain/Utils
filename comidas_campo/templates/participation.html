@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Mi participación — {{ event.name }}{% endblock %}
+{% block content %}
+
+{% set editable = event.is_open %}
+
+<div class="card">
+  <div class="row-between">
+    <div>
+      <h1>Mi participación</h1>
+      <p class="muted">{{ part.family.name }} · {{ event.name }} ({{ event.start_date|fecha }} – {{ event.end_date|fecha }})</p>
+    </div>
+    {% if part.submitted %}<span class="badge badge-open">Completado</span>{% else %}<span class="badge badge-pending">Pendiente</span>{% endif %}
+  </div>
+  {% if not editable %}
+    <div class="flash flash-error">El evento está cerrado. Solo puedes ver tus datos; pídele al administrador que lo reabra para editar.</div>
+  {% endif %}
+</div>
+
+<!-- Asistencia -->
+<div class="card">
+  <h2>Asistencia · personas por día</h2>
+  <p class="muted">Indica cuántas personas de tu familia estuvieron presentes cada día. Total actual: <strong>{{ total_pd }}</strong> persona-días.</p>
+
+  {% if editable %}
+  <details class="range-helper">
+    <summary>Rellenar un rango rápido</summary>
+    <form method="post" action="{{ url_for('fill_attendance', eid=event.id) }}" class="inline-form">
+      <label>Personas <input type="number" name="personas" min="0" value="0" required></label>
+      <label>Desde <input type="date" name="desde" min="{{ event.start_date.isoformat() }}" max="{{ event.end_date.isoformat() }}" value="{{ event.start_date.isoformat() }}" required></label>
+      <label>Hasta <input type="date" name="hasta" min="{{ event.start_date.isoformat() }}" max="{{ event.end_date.isoformat() }}" value="{{ event.end_date.isoformat() }}" required></label>
+      <button type="submit">Aplicar al rango</button>
+    </form>
+    <p class="muted">Esto reemplaza el valor de cada día del rango. Después puedes ajustar días puntuales abajo.</p>
+  </details>
+
+  <form method="post" action="{{ url_for('save_attendance', eid=event.id) }}">
+    <div class="day-grid">
+      {% for d in days %}
+        <label class="day-cell">
+          <span>{{ d|fecha_corta }}</span>
+          <input type="number" name="day_{{ d.isoformat() }}" min="0" value="{{ att.get(d, 0) }}">
+        </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="primary">Guardar asistencia</button>
+  </form>
+  {% else %}
+    <div class="day-grid">
+      {% for d in days %}
+        <div class="day-cell readonly"><span>{{ d|fecha_corta }}</span><strong>{{ att.get(d, 0) }}</strong></div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Gastos -->
+<div class="card">
+  <h2>Gastos en comida</h2>
+  <p class="muted">Agrega lo que gastaste (puedes poner varias compras). Total: <strong>{{ total_spent|clp }}</strong>. Si no gastaste nada, déjalo vacío.</p>
+
+  {% if expenses %}
+  <table>
+    <thead><tr><th>Descripción</th><th class="num">Monto</th>{% if editable %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+      {% for e in expenses %}
+        <tr>
+          {% if editable %}
+            <td>
+              <form method="post" action="{{ url_for('edit_expense', eid=event.id, gid=e.id) }}" class="inline-form" id="edit-{{ e.id }}">
+                <input type="text" name="description" value="{{ e.description }}" placeholder="(sin descripción)">
+            </td>
+            <td class="num">
+                <input type="text" name="amount" value="{{ e.amount }}" inputmode="numeric" class="amount-input">
+            </td>
+            <td class="nowrap">
+                <button type="submit">Guardar</button>
+              </form>
+              <form method="post" action="{{ url_for('delete_expense', eid=event.id, gid=e.id) }}"
+                    onsubmit="return confirm('¿Eliminar este gasto?');" style="display:inline">
+                <button type="submit" class="danger">Eliminar</button>
+              </form>
+            </td>
+          {% else %}
+            <td>{{ e.description or '(sin descripción)' }}</td>
+            <td class="num">{{ e.amount|clp }}</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="muted">Aún no registras gastos.</p>
+  {% endif %}
+
+  {% if editable %}
+  <h3>Agregar gasto</h3>
+  <form method="post" action="{{ url_for('add_expense', eid=event.id) }}" class="inline-form">
+    <input type="text" name="description" placeholder="Descripción (ej: carne, verduras)">
+    <input type="text" name="amount" placeholder="Monto en $" inputmode="numeric" class="amount-input" required>
+    <button type="submit" class="primary">Agregar</button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- Completar -->
+{% if editable %}
+<div class="card">
+  <form method="post" action="{{ url_for('toggle_submit', eid=event.id) }}">
+    {% if part.submitted %}
+      <button type="submit">Marcar como pendiente</button>
+      <span class="muted">Ya marcaste tu participación como completada.</span>
+    {% else %}
+      <button type="submit" class="primary">Marcar mi participación como completada</button>
+      <span class="muted">Hazlo cuando hayas ingresado tu asistencia y tus gastos.</span>
+    {% endif %}
+  </form>
+</div>
+{% endif %}
+
+<p><a href="{{ url_for('event_detail', eid=event.id) }}">← Volver al evento</a></p>
+{% endblock %}

@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Flask instance / local SQLite database
+instance/
+*.db
+
+# Local Docker data mount
+/data_local/
+
+# Env / secrets (NUNCA subir a git)
+.env
+deploy.secrets

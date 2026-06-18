@@ -1,0 +1,15 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+instance/
+data/
+notebooks/
+*.db
+.git/
+.gitignore
+README.md
+tests/
+deploy.sh
+deploy_remote.sh
+deploy.conf

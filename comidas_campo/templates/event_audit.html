@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Detalle — {{ event.name }}{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Detalle de todas las familias</h1>
+  <p class="muted">{{ event.name }} · {{ event.start_date|fecha }} – {{ event.end_date|fecha }}</p>
+  <p class="muted">Revisa la asistencia día por día y los gastos de cada familia. Si algo no
+    cuadra, la familia correspondiente puede corregirlo en «Mi participación» mientras el
+    evento esté abierto.</p>
+</div>
+
+<div class="card">
+  <h2>Asistencia · personas por día</h2>
+  {% if families and days %}
+  <div class="table-scroll">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Día</th>
+          {% for f in families %}<th class="num">{{ f.name }}</th>{% endfor %}
+          <th class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in days %}
+        <tr>
+          <td class="nowrap">{{ d|fecha_corta }}</td>
+          {% for f in families %}
+            {% set n = att[f.id].get(d, 0) %}
+            <td class="num{% if n == 0 %} zero{% endif %}">{{ n }}</td>
+          {% endfor %}
+          <td class="num"><strong>{{ day_totals[d] }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>Persona-días</th>
+          {% for f in families %}<th class="num">{{ pd_per_fam[f.id] }}</th>{% endfor %}
+          <th class="num">{{ grand_pd }}</th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+    <p class="muted">No hay familias o días para mostrar.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Resumen por familia</h2>
+  <table>
+    <thead><tr><th>Familia</th><th class="num">Persona-días</th><th class="num">Total gastado</th></tr></thead>
+    <tbody>
+      {% for f in families %}
+      <tr>
+        <td>{{ f.name }}</td>
+        <td class="num">{{ pd_per_fam[f.id] }}</td>
+        <td class="num">{{ spent_per_fam[f.id]|clp }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><th>Total</th><th class="num">{{ grand_pd }}</th><th class="num">{{ grand_spent|clp }}</th></tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Detalle de gastos</h2>
+  {% if expenses %}
+  <table>
+    <thead><tr><th>Familia</th><th>Descripción</th><th class="num">Monto</th></tr></thead>
+    <tbody>
+      {% for e in expenses %}
+      <tr>
+        <td>{{ e.family.name }}</td>
+        <td>{{ e.description or '(sin descripción)' }}</td>
+        <td class="num">{{ e.amount|clp }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="muted">Aún no hay gastos registrados.</p>
+  {% endif %}
+</div>
+
+<p><a href="{{ url_for('event_detail', eid=event.id) }}">← Volver al evento</a></p>
+{% endblock %}

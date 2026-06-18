@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Crear evento — Comidas Campo{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Crear evento</h1>
+  {% if not families %}
+    <p class="muted">Primero <a href="{{ url_for('admin_families') }}">agrega familias</a> para poder asignarlas al evento.</p>
+  {% else %}
+  <form method="post" action="{{ url_for('new_event') }}">
+    <label for="name">Nombre del evento</label>
+    <input type="text" id="name" name="name" placeholder="Ej: Vacaciones de invierno 2026" required>
+
+    <div class="two-col">
+      <div>
+        <label for="start_date">Fecha de inicio</label>
+        <input type="date" id="start_date" name="start_date" required>
+      </div>
+      <div>
+        <label for="end_date">Fecha de término</label>
+        <input type="date" id="end_date" name="end_date" required>
+      </div>
+    </div>
+
+    <label>Familias participantes</label>
+    <div class="checkbox-list">
+      {% for f in families %}
+        <label class="check"><input type="checkbox" name="families" value="{{ f.id }}" checked> {{ f.name }}</label>
+      {% endfor %}
+    </div>
+
+    <button type="submit" class="primary">Crear evento</button>
+  </form>
+  {% endif %}
+</div>
+
+<p><a href="{{ url_for('index') }}">← Volver a eventos</a></p>
+{% endblock %}

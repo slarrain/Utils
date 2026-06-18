@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Familias — Comidas Campo{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Familias</h1>
+  <p class="muted">Esta lista cambia poco. Desactiva una familia para ocultarla en eventos nuevos sin borrar su historial.</p>
+
+  {% if families %}
+  <table>
+    <thead><tr><th>Nombre</th><th>Activa</th><th></th></tr></thead>
+    <tbody>
+      {% for f in families %}
+        <tr>
+          <form method="post" action="{{ url_for('edit_family', fid=f.id) }}" class="inline-form">
+            <td><input type="text" name="name" value="{{ f.name }}"></td>
+            <td><input type="checkbox" name="active" {% if f.active %}checked{% endif %}></td>
+            <td><button type="submit">Guardar</button></td>
+          </form>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="muted">No hay familias todavía.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Agregar familia</h2>
+  <form method="post" action="{{ url_for('add_family') }}" class="inline-form">
+    <input type="text" name="name" placeholder="Nombre de la familia" required>
+    <button type="submit" class="primary">Agregar</button>
+  </form>
+</div>
+
+<p><a href="{{ url_for('index') }}">← Volver a eventos</a></p>
+{% endblock %}
