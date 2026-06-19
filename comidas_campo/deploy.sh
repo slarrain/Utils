@@ -67,7 +67,16 @@ trap cleanup EXIT
 if [ "$USE_SUDO" = "yes" ]; then SUDO_PREFIX="sudo "; else SUDO_PREFIX=""; fi
 
 echo "==> Conectando al NAS $REMOTE (te pedirá la contraseña una sola vez)..."
-"${SSHM[@]}" -o ConnectTimeout=15 "$REMOTE" true
+"${SSHM[@]}" -n -o ConnectTimeout=15 "$REMOTE" true
+
+# Pedimos la contraseña de sudo UNA vez y se la pasamos a sudo por stdin (sudo -S).
+# Así no hace falta un pseudo-terminal: con -t, 'docker run -d' sobre SSH deja la
+# sesión colgada, y sin -t sudo no puede pedir la contraseña en una terminal.
+SUDO_PASS=""
+if [ "$USE_SUDO" = "yes" ]; then
+  read -rsp "Contraseña de sudo de '$NAS_USER' en el NAS: " SUDO_PASS
+  echo
+fi
 
 echo "==> Construyendo la imagen '$IMAGE_NAME:latest' localmente..."
 docker build -t "$IMAGE_NAME:latest" "$SCRIPT_DIR"
@@ -102,14 +111,9 @@ tar -cf - -C "$TMP" image.tar.gz params.env remote.sh \
   | "${SSHM[@]}" "$REMOTE" "tar -xf - -C '$REMOTE_DIR'"
 
 echo "==> Ejecutando el despliegue en el NAS..."
-# IMPORTANTE: el comando de trabajo se ejecuta SIN pseudo-terminal (-t). Con -t,
-# 'docker run -d' sobre SSH deja la sesión colgada aunque el contenedor sí arranca.
-# Si hace falta sudo, cacheamos la contraseña antes (eso sí necesita -t, pero es
-# instantáneo) y el trabajo corre con las credenciales ya en caché.
+# Sin pseudo-terminal (-t). La contraseña de sudo se envía por stdin con 'sudo -S'.
 if [ "$USE_SUDO" = "yes" ]; then
-  echo "    Autenticando sudo (te pedirá la contraseña de '$NAS_USER' una vez)..."
-  "${SSHM[@]}" -t "$REMOTE" "sudo -v"
-  "${SSHM[@]}" "$REMOTE" "sudo bash '$REMOTE_DIR/remote.sh' '$REMOTE_DIR'"
+  printf '%s\n' "$SUDO_PASS" | "${SSHM[@]}" "$REMOTE" "sudo -S -p '' bash '$REMOTE_DIR/remote.sh' '$REMOTE_DIR'"
 else
   "${SSHM[@]}" "$REMOTE" "bash '$REMOTE_DIR/remote.sh' '$REMOTE_DIR'"
 fi
