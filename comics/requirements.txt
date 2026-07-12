@@ -1,0 +1,4 @@
+telethon>=1.36,<2
+comictagger==1.5.5
+unrar-cffi>=0.2.2
+requests==2.*

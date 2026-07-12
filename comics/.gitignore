@@ -1,0 +1,8 @@
+deploy.secrets
+__pycache__/
+*.pyc
+*.session
+*.session-journal
+.venv/
+venv/
+.claude/
