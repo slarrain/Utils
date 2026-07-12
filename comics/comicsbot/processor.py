@@ -115,13 +115,20 @@ async def scan_once(client) -> None:
 
 
 async def rescan_failed(client, event) -> None:
-    """/rescan_failed: file anything in failed/ that now carries manual tags."""
+    """/rescan_failed: file anything in failed/ — or in the library's Unknown/
+    publisher folder — that now carries manual tags."""
+    unknown = config.LIBRARY / "Unknown"
     files = [f for f in sorted(config.FAILED.rglob("*"))
              if f.is_file() and f.suffix.lower() in config.ARCHIVE_EXTS]
-    if not files:
-        await event.reply("failed/ is empty — nothing to rescan.")
+    # Unknown/ files were already filed by series tags; re-filing only helps
+    # once a retag supplies what was missing (a publisher or a ComicVine id).
+    unknown_files = [f for f in sorted(unknown.rglob("*")) if unknown.is_dir()
+                     and f.is_file() and f.suffix.lower() in config.ARCHIVE_EXTS]
+    if not files and not unknown_files:
+        await event.reply("failed/ and Unknown/ are empty — nothing to rescan.")
         return
-    status = await event.reply(f"🔎 Rescanning {len(files)} file(s) in failed/ …")
+    status = await event.reply(
+        f"🔎 Rescanning {len(files)} file(s) in failed/, {len(unknown_files)} in Unknown/ …")
     filed, untagged = 0, []
     for f in files:
         try:
@@ -138,7 +145,22 @@ async def rescan_failed(client, event) -> None:
                                note="ℹ️ Filed from failed/ using its tags.")
         _cleanup_slug_dir(parent)
         filed += 1
-    msg = f"Done — filed {filed}, {len(untagged)} still untagged in failed/."
+    for f in unknown_files:
+        try:
+            cbz = await asyncio.to_thread(identify.ensure_cbz, f)
+            tags = identify.read_tags(cbz)
+        except Exception as e:  # noqa: BLE001
+            untagged.append(f"{f.name} (unreadable: {e})")
+            continue
+        if not (tags.get("Publisher") or tags.get("issue_id")):
+            untagged.append(f"{cbz.name} (still no publisher)")
+            continue
+        parent = cbz.parent
+        await _file_and_report(client, cbz, parent.name, {"chat_id": event.chat_id},
+                               note="ℹ️ Re-filed out of Unknown/ using its new tags.")
+        _cleanup_slug_dir(parent)
+        filed += 1
+    msg = f"Done — filed {filed}, {len(untagged)} left as-is."
     if untagged:
         msg += "\n" + "\n".join(f"• {n}" for n in untagged[:15])
     await status.edit(msg)

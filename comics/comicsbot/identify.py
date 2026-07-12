@@ -157,9 +157,14 @@ def read_tags(path: Path) -> dict:
         return {}
     tags = {el.tag: (el.text or "") for el in root}
     issue_id = None
-    m = re.search(r"Issue ID (\d+)", tags.get("Notes", ""))
+    # Only trust an issue id as a COMICVINE id if the tags say so — manual
+    # tagging may use other sources (e.g. Grand Comics Database) whose ids
+    # must not be sent to the ComicVine API.
+    m = None
+    if "comic vine" in tags.get("Notes", "").lower():
+        m = re.search(r"Issue ID (\d+)", tags.get("Notes", ""))
     if not m:
-        m = re.search(r"/4000-(\d+)", tags.get("Web", ""))
+        m = re.search(r"comicvine\.gamespot\.com/[^\s]*/4000-(\d+)", tags.get("Web", ""))
     if m:
         issue_id = int(m.group(1))
     tags["issue_id"] = issue_id
