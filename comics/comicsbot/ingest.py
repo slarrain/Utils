@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import time
+from urllib.parse import quote
 
 from . import config, hints
 
@@ -84,9 +85,25 @@ def assign_context(chat_id: int, slug: str, origin: tuple) -> list[str]:
             out.append(e["text"])
     return out
 
-URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
+# Match greedily up to whitespace/angle-brackets/double-quote only. Apostrophes
+# and parentheses are LEGAL url characters and routinely appear in comic-release
+# links (e.g. .../X-Men_'97_..._(2026)_(Digital).cbz.html) — excluding them here
+# truncated such urls mid-path and handed JDownloader a dead link. Trailing
+# punctuation and unbalanced brackets are trimmed afterwards by _clean_url.
+URL_RE = re.compile(r"https?://[^\s<>\"]+")
 # Links that are Telegram-internal (channel invites, post references) — never downloadable.
 SKIP_HOSTS = ("t.me/", "telegram.me/", "telegram.dog/")
+
+
+def _clean_url(u: str) -> str:
+    """Trim trailing punctuation/quotes and unbalanced closing brackets that come
+    from prose wrapping (e.g. "(see https://x/y)." or 'https://x/y'), while
+    keeping brackets that are balanced inside the url itself (Wikipedia-style)."""
+    u = u.rstrip(".,;:!?'\"")
+    for open_c, close_c in (("(", ")"), ("[", "]")):
+        while u.endswith(close_c) and u.count(open_c) < u.count(close_c):
+            u = u[:-1]
+    return u
 
 HELP = (
     "Forward me a message from a comics channel and I'll take it from there:\n"
@@ -124,7 +141,7 @@ def extract_urls(message) -> list[str]:
         pass
     seen, out = set(), []
     for u in urls:
-        u = u.rstrip(".,;")
+        u = _clean_url(u)
         if any(h in u for h in SKIP_HOSTS):
             continue
         if u not in seen:
@@ -133,9 +150,18 @@ def extract_urls(message) -> list[str]:
     return out
 
 
+def _encode_for_crawljob(url: str) -> str:
+    """Percent-encode characters a link parser might treat as delimiters
+    (apostrophes, parentheses, brackets, spaces) so JDownloader's own crawler
+    can't re-truncate the URL the way our extractor used to — e.g. florenfile
+    links whose filename slug contains "'97" or "(2026)". URL structure and any
+    existing %XX escapes are preserved; the file host decodes these back."""
+    return quote(url, safe="%:/?#@!$&*+,;=~")
+
+
 def write_crawljob(slug: str, urls: list[str]) -> None:
     job = [{
-        "text": "\n".join(urls),
+        "text": "\n".join(_encode_for_crawljob(u) for u in urls),
         "packageName": slug,
         "downloadFolder": f"{config.JD_DOWNLOAD_ROOT}/telegram/{slug}",
         "autoStart": "TRUE",

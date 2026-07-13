@@ -474,7 +474,10 @@ def _series_from_name(stem: str):
 
 
 def _issue_from_name(stem: str):
-    stem = identify.normalize_numbering(stem)
+    # Underscore-delimited scene names ("Maxentius_02_The_Augusta_2019_...") hide
+    # the issue number from the boundary regex below, because "_" is a word char:
+    # normalize separators first so "_02_" reads as a standalone number.
+    stem = identify.normalize_numbering(stem.replace("_", " "))
     m = re.search(r"#\s*(\d+(?:\.\d+)?)", stem)
     if m:
         return m.group(1)

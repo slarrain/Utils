@@ -228,8 +228,15 @@ def tag_file(path: Path, hint_meta: dict) -> bool:
     attempts: list[list[str]] = [["-s", "-t", "CR", "-o", "-f"]]
     m = _hints_to_m(hint_meta)
     if m:
+        # Anchor the online search to the message-text hints (series/issue/year).
         attempts.append(["-s", "-t", "CR", "-o", "-f", "-m", m])
-    attempts.append(["-s", "-t", "CR", "-o", "-f", "-1"])
+        # Last resort — assume issue #1 when none was parsed, but keep it
+        # anchored to the hinted series via -m. A *bare* "-f -1" (no -m) lets
+        # ComicTagger's fuzzy search wander to an unrelated volume that merely
+        # shares a stray number in the filename: that is how "Maxentius_02" got
+        # filed as "Kikaider Code 02 #1". With no hints at all we'd rather fall
+        # through and ask the owner than guess a wrong series.
+        attempts.append(["-s", "-t", "CR", "-o", "-f", "-m", m, "-1"])
     for extra in attempts:
         try:
             r = _run_ct([*extra, str(path)])
