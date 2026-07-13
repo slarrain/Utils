@@ -1,7 +1,12 @@
 # florenfile links never appear in JDownloader when submitted via the bot
 
-**Status:** UNRESOLVED (JDownloader-side). A separate, real bot bug that this
-investigation uncovered — URL truncation — **is fixed** (see §8), pending deploy.
+**Status:** RESOLVED (2026-07-13) — see §15. The bot now submits links through
+the **My.JDownloader API** (same path as the UI's Add Links dialog, which always
+worked), keeps the crawljob only as fallback, and **verifies** the package
+actually appears in JD, warning in Telegram if it silently vanishes. The
+original crawljob-drop mechanism inside JD was never pinned down (it proved
+*intermittent*, not deterministic — §15.2), but the pipeline no longer depends
+on it. Both X-Men '97 files are queued in JD. Pending `./deploy.sh`.
 
 **Date of investigation:** 2026-07-12/13
 **Component:** `comicsbot` (Telegram → JDownloader → ComicTagger → Komga pipeline)
@@ -36,7 +41,7 @@ could be checked from the filesystem + the network was checked; see §6–§9.
 | Item | Status |
 | --- | --- |
 | Bot truncated florenfile URLs at `'`/`(`/`)` (→ dead link → "offline") | **FIXED** in code (§8), **not yet deployed** (`./deploy.sh`) |
-| florenfile links submitted via crawljob never appear in JDownloader | **OPEN** — JD-side, mechanism unknown |
+| florenfile links submitted via crawljob never appear in JDownloader | **CLOSED** — intermittent JD-side drop; bot no longer relies on crawljobs (§15) |
 
 ---
 
@@ -314,3 +319,56 @@ curl -s -A "Mozilla/5.0" "https://florenfile.com/zorrqcexbls2" | grep -o 'Size: 
 # Walk the free flow to see the wait/captcha state (POST op=download1). See
 # scratchpad floren_flow.py from the 2026-07-12 session for the full script.
 ```
+
+---
+
+## 15. RESOLUTION (2026-07-13, session with My.JDownloader API access)
+
+### 15.1 The investigation boundary of §9 fell
+
+My.JDownloader API credentials were found in
+`~/github/nas/downmagaz/credentials.ini` (`[JDOWNLOADER]` section; same account
+as the NAS JD, device name **`NAS`**; example client in
+`~/github/nas/downmagaz/downmagaz.py` using the `myjdapi` package). With them,
+JD's Downloads and LinkGrabber lists are fully queryable from the dev machine —
+no container access needed.
+
+### 15.2 What the API showed (all directly observed)
+
+1. **LinkGrabber was empty** — the vanished florenfile links were NOT sitting
+   there unconfirmed. §8-hyp.4 ruled out for the current state.
+2. **A fresh id-only crawljob for 002, dropped while watching via the API,
+   WORKED**: at t+4s the link appeared in LinkGrabber (`availability: ONLINE`,
+   48 444 211 bytes), by t+8s it had auto-confirmed into Downloads with status
+   *"Download limit reached or wait until next download can be started"*.
+   **Same URL form, same folder, same JD — worked today after 6/6 identical
+   attempts failed on 07-12.** The JD-side drop is therefore *intermittent*
+   (plausibly stale LinkGrabber state that cleared overnight — e.g. dedup
+   against the day's earlier truncated/offline entries, §8-hyp.1/3 — but that
+   is a hypothesis; the historical mechanism was not confirmed and no longer
+   matters).
+3. Both comics are now queued in JD Downloads awaiting florenfile's ~20h/file
+   free-tier limit: 001 (manual add, 07-12) and 002 (crawljob, 07-13).
+
+### 15.3 The fix (bot-side, deterministic)
+
+`comicsbot/jd.py` (new): My.JDownloader client — `add_links()` (the exact
+API call behind the UI's Add Links dialog, with `deepDecrypt`+`autostart`),
+`find_package()` (searches Downloads then LinkGrabber by package name),
+`remove_from_linkgrabber()`. Session cached, auto-reconnects once when stale.
+
+`ingest.py`: the link branch now calls `send_to_jd()` — **API first,
+crawljob file only as fallback** if the API call fails — and then
+`confirm_in_jd()` polls `find_package()` for up to ~2 min and **edits the
+Telegram reply with the verified outcome**: "📥 JDownloader queued …
+(status, size)" on success, or "⚠️ JDownloader silently dropped the links —
+add manually: <urls>" so nothing can vanish silently again.
+
+Config/deploy: `MYJD_EMAIL`/`MYJD_PASSWORD`/`MYJD_DEVICE` (+ optional
+`MYJD_APP_KEY`) flow through `deploy.secrets` → `deploy.sh` → `deploy_remote.sh`
+→ container env; `myjdapi` added to `requirements.txt`. Credentials are already
+in the local `deploy.secrets` (gitignored).
+
+Verified end-to-end against the real JD: `add_links` (autostart off) → package
+appears in LinkGrabber with the apostrophe/parens URL intact → `find_package`
+reports it → cleaned up via `remove_from_linkgrabber`.

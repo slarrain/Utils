@@ -1,11 +1,12 @@
 """Handle incoming Telegram messages: download attachments, route links to JDownloader."""
+import asyncio
 import json
 import logging
 import re
 import time
 from urllib.parse import quote
 
-from . import config, hints
+from . import config, hints, jd
 
 log = logging.getLogger("comicsbot.ingest")
 
@@ -91,8 +92,18 @@ def assign_context(chat_id: int, slug: str, origin: tuple) -> list[str]:
 # truncated such urls mid-path and handed JDownloader a dead link. Trailing
 # punctuation and unbalanced brackets are trimmed afterwards by _clean_url.
 URL_RE = re.compile(r"https?://[^\s<>\"]+")
-# Links that are Telegram-internal (channel invites, post references) — never downloadable.
-SKIP_HOSTS = ("t.me/", "telegram.me/", "telegram.dog/")
+# Links that are never a comic download: Telegram-internal (channel invites,
+# post references) and the social/blog/video homes that comic channels cite as
+# credits ("Únete a @Comicverso", "LadronCorps" → a blogspot page). JDownloader
+# would happily *scrape those web pages* into junk (87 MB of blogspot assets for
+# one Gargoyles cover), so they must never reach it.
+SKIP_HOSTS = ("t.me/", "telegram.me/", "telegram.dog/",
+              "facebook.com/", "fb.watch/", "instagram.com/", "twitter.com/",
+              "x.com/", "youtube.com/", "youtu.be/", "blogspot.", "blogger.com")
+# A forwarded comic post is often a cover PHOTO + caption in one message and the
+# actual archive in a sibling message. The caption's only link is a credit link,
+# so a cover image must be treated as context, never mined for download links.
+COVER_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 
 def _clean_url(u: str) -> str:
@@ -175,6 +186,52 @@ def write_crawljob(slug: str, urls: list[str]) -> None:
     tmp.rename(path)
 
 
+async def send_to_jd(slug: str, urls: list[str]) -> str:
+    """Hand urls to JDownloader, API first (the reliable path — same as the UI's
+    Add Links dialog), crawljob file as fallback. Returns which route was used."""
+    encoded = [_encode_for_crawljob(u) for u in urls]
+    try:
+        await asyncio.to_thread(
+            jd.add_links, slug, encoded, f"{config.JD_DOWNLOAD_ROOT}/telegram/{slug}")
+        return "api"
+    except Exception:  # noqa: BLE001 - any API failure falls back to FolderWatch
+        log.exception("myjd add_links failed for %s; falling back to crawljob", slug)
+        write_crawljob(slug, urls)
+        return "crawljob"
+
+
+async def confirm_in_jd(slug: str, urls: list[str], status_msg) -> None:
+    """Watch JD for up to ~2 minutes and report what actually happened —
+    FolderWatch has silently dropped links before (florenfile), so absence of
+    errors is not success. Edits the bot's reply with the verified state."""
+    state = None
+    for delay in (10, 15, 20, 25, 25, 30):
+        await asyncio.sleep(delay)
+        try:
+            state = await asyncio.to_thread(jd.find_package, slug)
+        except Exception:  # noqa: BLE001 - can't verify without the API
+            log.exception("myjd find_package failed for %s", slug)
+            await status_msg.edit(
+                f"📨 Sent {len(urls)} link(s) to JDownloader as **{slug}** — "
+                "couldn't verify they were accepted (My.JDownloader API unreachable); "
+                "worth a glance at the JD web UI.")
+            return
+        if state and state["where"] == "downloads":
+            break
+    if state:
+        mb = state["bytes"] / 1e6
+        size = f", {mb:,.1f} MB" if mb else ""
+        await status_msg.edit(
+            f"📥 JDownloader queued **{slug}** "
+            f"({state['status']}{size}).\n"
+            "I'll identify and file the comic when the download finishes.")
+    else:
+        links = "\n".join(urls)
+        await status_msg.edit(
+            f"⚠️ JDownloader silently dropped the links for **{slug}** — "
+            f"please add them manually (JD web UI → Add Links):\n{links}")
+
+
 async def handle_message(event) -> None:
     msg = event.message
     text = msg.message or ""
@@ -242,19 +299,26 @@ async def handle_message(event) -> None:
         await status.edit(f"✅ Downloaded **{name}** — identifying, I'll report back.")
         return
 
-    urls = extract_urls(msg)
+    # A cover photo with a caption is context/attribution, not a download — its
+    # only links are the channel's credit links (release-group blog/forum/
+    # Facebook). Skip link extraction so the caption falls through to the
+    # context path and enriches the sibling comic's hints instead of feeding
+    # JDownloader a web page to scrape.
+    is_cover = bool(msg.photo) or ext in COVER_EXTS
+    urls = [] if is_cover else extract_urls(msg)
     if urls:
         first_line = next((ln for ln in text.splitlines() if ln.strip()), name or "comic")
         slug = make_slug(re.sub(r"https?://\S+", "", first_line), event.chat_id, msg.id)
         _remember_slug(event.chat_id, slug, origin)
         context = assign_context(event.chat_id, slug, origin)
         hints.save(slug, (text + "\n" + "\n".join(context)).strip(), event.chat_id, msg.id)
-        write_crawljob(slug, urls)
-        log.info("crawljob %s (%d links)", slug, len(urls))
-        await event.reply(
-            f"📨 Sent {len(urls)} link(s) to JDownloader as **{slug}**.\n"
-            "I'll identify and file the comic when the download finishes."
+        route = await send_to_jd(slug, urls)
+        log.info("sent to JD via %s: %s (%d links)", route, slug, len(urls))
+        status = await event.reply(
+            f"📨 Sent {len(urls)} link(s) to JDownloader as **{slug}** — "
+            "verifying they were accepted…"
         )
+        asyncio.create_task(confirm_in_jd(slug, urls, status))
         return
 
     # No file, no links — treat any text (e.g. a cover's caption or a summary

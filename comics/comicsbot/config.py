@@ -23,6 +23,13 @@ KOMGA_EMAIL = _env("KOMGA_EMAIL")
 KOMGA_PASSWORD = _env("KOMGA_PASSWORD")
 KOMGA_LIBRARY_ID = _env("KOMGA_LIBRARY_ID")  # optional; autodetected if empty
 
+# My.JDownloader account (same credentials as the JD app on the NAS). Optional:
+# without them the bot falls back to crawljob files only.
+MYJD_EMAIL = _env("MYJD_EMAIL")
+MYJD_PASSWORD = _env("MYJD_PASSWORD")
+MYJD_DEVICE = _env("MYJD_DEVICE", "NAS")
+MYJD_APP_KEY = _env("MYJD_APP_KEY", "comicsbot")
+
 INBOX = Path(_env("INBOX_DIR", "/inbox"))
 LIBRARY = Path(_env("LIBRARY_DIR", "/library"))
 DATA = Path(_env("DATA_DIR", "/data"))
