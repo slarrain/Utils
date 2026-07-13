@@ -35,10 +35,15 @@ def _unique(p: Path) -> Path:
 def explode_container(path: Path) -> list[Path] | None:
     """Channels often ship zips/rars that CONTAIN comic archives (one or many
     tomes) instead of pages. Extract the inner archives next to the container
-    and return them; None means `path` is a normal comic (or not a container)."""
+    and return them; None means `path` is a normal comic (or not a container).
+
+    The archive format is sniffed from the CONTENT, not the extension: release
+    groups routinely ship a zip named .cbr (and vice versa). Dispatching on the
+    extension sent such a zip to the UnRAR engine, which crashed with
+    "OpenResult is 13" — that is how "Las guerras silenciosas ... CRG.cbr"
+    (a zip) died before it could even be identified."""
     inner_exts = config.ARCHIVE_EXTS
-    ext = path.suffix.lower()
-    if ext in (".zip", ".cbz"):
+    if zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as zf:
             names = [n for n in zf.namelist() if not n.endswith("/")]
             if any(Path(n).suffix.lower() in IMAGE_EXTS for n in names):
@@ -54,7 +59,9 @@ def explode_container(path: Path) -> list[Path] | None:
                 out.append(dest)
         path.unlink()
         return out
-    if ext in (".rar", ".cbr"):
+    with open(path, "rb") as fh:
+        magic = fh.read(8)
+    if magic.startswith(b"Rar!"):
         from unrar.cffi import rarfile as unrarfile
 
         rf = unrarfile.RarFile(str(path))
@@ -75,14 +82,25 @@ def explode_container(path: Path) -> list[Path] | None:
 
 
 def ensure_cbz(path: Path) -> Path:
-    """Return a .cbz for `path`, converting RAR/7z archives if needed."""
+    """Return a .cbz for `path`, converting RAR/7z archives if needed.
+
+    The archive format is detected from the CONTENT, not the extension —
+    release groups routinely ship zips named .cbr (and vice versa), and
+    dispatching on the extension made those fail as "unreadable"."""
     ext = path.suffix.lower()
-    if ext == ".cbz":
-        return path
-    if ext == ".zip":
+    if zipfile.is_zipfile(path):
+        if ext == ".cbz":
+            return path
         target = path.with_suffix(".cbz")
         path.rename(target)
         return target
+    with open(path, "rb") as fh:
+        magic = fh.read(8)
+    if magic.startswith(b"Rar!"):
+        return _rar_to_cbz(path)
+    if magic.startswith(b"7z\xbc\xaf\x27\x1c"):
+        return _unar_to_cbz(path)
+    # Unrecognized magic: fall back to the extension's converter.
     if ext in (".cbr", ".rar"):
         return _rar_to_cbz(path)
     if ext in (".cb7", ".7z"):
@@ -141,7 +159,9 @@ def _unar_to_cbz(path: Path) -> Path:
 # --------------------------------------------------------------------------- #
 def _run_ct(args: list[str]) -> subprocess.CompletedProcess:
     env = dict(os.environ, HOME=str(config.DATA))
-    cmd = ["comictagger", "--cv-api-key", config.CV_API_KEY, "-w", *args]
+    # ComicTagger 1.6 CLI: --comicvine-key (was --cv-api-key), --no-gui to force
+    # the commandline; -s/--save writes tags now (the old 1.5.x -w is gone).
+    cmd = ["comictagger", "--comicvine-key", config.CV_API_KEY, "--no-gui", *args]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=600, env=env)
 
 
@@ -179,8 +199,78 @@ def normalize_numbering(s: str) -> str:
     return s
 
 
+# --------------------------------------------------------------------------- #
+# Structured caption fields ("Comicverso" style: emoji | value per line) and the
+# publisher->language map used to pick the right EDITION of a multi-language
+# series (e.g. Thorgal, printed under the same cover art by ~10 publishers).
+# --------------------------------------------------------------------------- #
+_CAPTION_FIELDS = {  # emoji marker -> field
+    "📔": "series", "🗞": "publisher", "💬": "language", "📂": "count", "🗓": "year",
+}
+
+PUBLISHER_LANG = {
+    "es": ("norma", "panini españa", "panini espana", "ecc ediciones", "ecc",
+           "planeta", "ediciones b", "la cúpula", "la cupula", "astiberri",
+           "yermo", "dolmen", "kraken", "ponent mon", "aleta", "salvat",
+           "sd edicions", "órbita", "orbita", "dibbuks"),
+    "en": ("marvel", "dc comics", "image", "dark horse", "idw", "boom",
+           "dynamite", "vertigo", "valiant", "oni press", "titan", "fantagraphics",
+           "drawn & quarterly", "mad cave", "vault", "ablaze", "abstract"),
+    "fr": ("le lombard", "lombard", "dargaud", "dupuis", "casterman", "glénat",
+           "glenat", "delcourt", "soleil", "bamboo", "hachette", "albatros"),
+    "de": ("splitter", "carlsen", "egmont", "cross cult", "panini deutschland"),
+}
+
+
+def publisher_language(name: str | None) -> str | None:
+    n = (name or "").lower()
+    for lang, markers in PUBLISHER_LANG.items():
+        if any(mk in n for mk in markers):
+            return lang
+    return None
+
+
+def norm_language(v: str) -> str | None:
+    v = (v or "").lower()
+    table = {
+        "es": ("español", "espanol", "castellano", "spanish", "🇪🇸", "🇲🇽", "🇦🇷", "🇨🇱"),
+        "en": ("english", "inglés", "ingles", "🇺🇸", "🇬🇧"),
+        "fr": ("français", "francais", "french", "🇫🇷"),
+        "de": ("deutsch", "german", "alemán", "aleman", "🇩🇪"),
+    }
+    for lang, toks in table.items():
+        if any(t in v for t in toks):
+            return lang
+    return None
+
+
+def _pub_display(s: str) -> str:
+    """'#LeLombard' -> 'Le Lombard', 'DCComics' -> 'DC Comics'."""
+    s = s.strip().lstrip("#")
+    parts = re.findall(r"[A-Z]+(?![a-z])|[A-Z][a-z]+|[a-z]+|\d+", s)
+    return " ".join(parts) if parts else s
+
+
+def _parse_structured(text: str) -> dict:
+    """Pull the emoji-tagged caption fields (first value per field wins)."""
+    out: dict = {}
+    for line in (text or "").splitlines():
+        s = line.strip()
+        for emo, field in _CAPTION_FIELDS.items():
+            if s.startswith(emo) and field not in out:
+                val = s[len(emo):].lstrip(" |\t️").strip()
+                if val:
+                    out[field] = val
+                break
+    return out
+
+
 def parse_hints(text: str) -> dict:
-    """Extract series/issue/year guesses from the Telegram message text."""
+    """Extract series/issue/year/publisher/language/count guesses from the note.
+
+    Free text falls back to the line-heuristic below; the structured Comicverso
+    caption (📔 series, 🗞 publisher, 💬 language, 📂 count) overrides it with
+    cleaner, explicitly-labelled values."""
     if not text:
         return {}
     clean = re.sub(r"https?://\S+", "", normalize_numbering(text))
@@ -213,30 +303,64 @@ def parse_hints(text: str) -> dict:
         series = re.sub(rf"\s+0*{re.escape(out['issue'])}$", "", series)
     if len(series) >= 3:
         out["series"] = series
+
+    # Structured caption fields win — they are explicitly labelled.
+    st = _parse_structured(text)
+    if st.get("series"):
+        s = re.sub(r"#\w+", " ", st["series"])
+        s = re.sub(r"[^\w' .\-&:]+", " ", s)          # keep ':' for "X: Subtitle"
+        s = re.sub(r"\s{2,}", " ", s).strip(" -.:")
+        if len(s) >= 2:
+            out["series"] = s
+    if st.get("publisher"):
+        out["publisher"] = _pub_display(st["publisher"])
+    if st.get("language"):
+        lang = norm_language(st["language"])
+        if lang:
+            out["language"] = lang
+    if st.get("count") and "?" not in st["count"]:
+        nums = [int(n) for n in re.findall(r"\d+", st["count"])]
+        if nums:
+            out["count"] = max(nums)
+    if st.get("year") and not out.get("year"):
+        ym = re.search(r"(?:19|20)\d{2}", st["year"])
+        if ym:
+            out["year"] = ym.group(0)
     return out
 
 
 def _hints_to_m(h: dict) -> str:
-    def esc(v: str) -> str:
-        return v.replace(",", "^,").replace("=", "^=")
-    parts = [f"{k}={esc(str(h[k]))}" for k in ("series", "issue", "year") if h.get(k)]
+    """Build ComicTagger 1.6 `-m` metadata (YAML). Single-quote every value
+    (doubling internal quotes) so a colon/comma in a value can't break the map.
+
+    Deliberately OMITS 'year': fan-scan captions carry the ORIGINAL series /
+    reference year (e.g. Thorgal's "1997"), almost never the ComicVine edition's
+    start-year, and ComicTagger uses year as a HARD filter — a wrong year makes
+    the search return "Found 0 series" and forces a needless prompt (verified).
+    Series + issue is enough; covers do the disambiguation."""
+    def q(v: str) -> str:
+        return "'" + str(v).replace("'", "''") + "'"
+    parts = [f"{k}: {q(h[k])}" for k in ("series", "issue") if h.get(k)]
     return ", ".join(parts)
 
 
 def tag_file(path: Path, hint_meta: dict) -> bool:
     """Try to auto-identify+tag. Success == ComicInfo.xml with a CV issue id."""
-    attempts: list[list[str]] = [["-s", "-t", "CR", "-o", "-f"]]
+    # --no-use-year-when-identifying: never let a stray year (from -m or the
+    # filename) FILTER out candidates — see _hints_to_m.
+    base = ["-s", "--tags-write", "CR", "-o", "--no-use-year-when-identifying"]
+    attempts: list[list[str]] = [[*base, "-f"]]
     m = _hints_to_m(hint_meta)
     if m:
-        # Anchor the online search to the message-text hints (series/issue/year).
-        attempts.append(["-s", "-t", "CR", "-o", "-f", "-m", m])
+        # Anchor the online search to the message-text hints (series/issue).
+        attempts.append([*base, "-f", "-m", m])
         # Last resort — assume issue #1 when none was parsed, but keep it
         # anchored to the hinted series via -m. A *bare* "-f -1" (no -m) lets
         # ComicTagger's fuzzy search wander to an unrelated volume that merely
         # shares a stray number in the filename: that is how "Maxentius_02" got
         # filed as "Kikaider Code 02 #1". With no hints at all we'd rather fall
         # through and ask the owner than guess a wrong series.
-        attempts.append(["-s", "-t", "CR", "-o", "-f", "-m", m, "-1"])
+        attempts.append([*base, "-f", "-m", m, "-1"])
     for extra in attempts:
         try:
             r = _run_ct([*extra, str(path)])
@@ -269,12 +393,75 @@ def write_basic_tags(path: Path, meta: dict) -> None:
             zf.writestr("ComicInfo.xml", '<?xml version="1.0"?>\n' + xml)
 
 
+def _extract_synopsis(text: str) -> str | None:
+    """The note's prose blurb — the longest non-field, non-link line with real
+    sentences. Skips the emoji caption fields and short lines."""
+    best = ""
+    for line in (text or "").splitlines():
+        s = line.strip()
+        if not s or s.startswith(tuple(_CAPTION_FIELDS)) or re.search(r"https?://", s):
+            continue
+        if len(re.findall(r"\w+", s)) >= 8 and len(s) > len(best):
+            best = s
+    return best[:1500] or None
+
+
+def _replace_zip_entry(path: Path, entry: str, data: bytes) -> None:
+    with zipfile.ZipFile(path) as zin:
+        items = [(n, zin.read(n)) for n in zin.namelist() if n != entry]
+    tmp = path.with_name(path.name + ".tmp")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as zout:
+        for n, d in items:
+            zout.writestr(n, d)
+        zout.writestr(entry, data)
+    tmp.replace(path)
+
+
+def ensure_summary(path: Path, text: str) -> None:
+    """If the archive's ComicInfo has no Summary, fill it from the note's blurb
+    (so a rich forwarded synopsis isn't lost when ComicVine has no description).
+    Never overwrites an existing summary."""
+    synopsis = _extract_synopsis(text)
+    if not synopsis:
+        return
+    try:
+        with zipfile.ZipFile(path) as zf:
+            name = next((n for n in zf.namelist() if n.lower() == "comicinfo.xml"), None)
+            if not name:
+                return
+            root = ET.fromstring(zf.read(name))
+    except (zipfile.BadZipFile, ET.ParseError, OSError, KeyError):
+        return
+    el = root.find("Summary")
+    if el is not None and (el.text or "").strip():
+        return
+    if el is None:
+        el = ET.SubElement(root, "Summary")
+    el.text = synopsis
+    _replace_zip_entry(path, name, ('<?xml version="1.0"?>\n' + ET.tostring(root, encoding="unicode")).encode("utf-8"))
+
+
 def tag_with_issue_id(path: Path, issue_id: int) -> bool:
     try:
-        _run_ct(["-s", "-t", "CR", "-o", "--id", str(issue_id), str(path)])
+        _run_ct(["-s", "--tags-write", "CR", "-o", "--id", str(issue_id), str(path)])
     except subprocess.TimeoutExpired:
         return False
     return read_tags(path).get("issue_id") == issue_id
+
+
+def clear_tags(path: Path) -> None:
+    """Remove ComicInfo.xml from the archive so a distrusted auto-match is not
+    reused downstream as if it were the file's own embedded metadata."""
+    with zipfile.ZipFile(path) as zin:
+        keep = [n for n in zin.namelist() if n.lower() != "comicinfo.xml"]
+        if len(keep) == len(zin.namelist()):
+            return
+        payload = [(n, zin.read(n)) for n in keep]
+    tmp = path.with_name(path.name + ".tmp")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as zout:
+        for n, data in payload:
+            zout.writestr(n, data)
+    tmp.replace(path)
 
 
 # --------------------------------------------------------------------------- #
@@ -302,6 +489,62 @@ def search_volumes(name: str, limit: int = 6) -> list[dict]:
             "issues": v.get("count_of_issues"),
         })
     return out
+
+
+def _norm_name(s: str | None) -> str:
+    return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+
+
+_PUB_STOP = {"comics", "comic", "editorial", "ediciones", "editions", "entertainment",
+             "the", "le", "la", "el", "los", "las", "de", "and", "y", "verlag"}
+
+
+def _pub_overlap(a: str | None, b: str | None) -> bool:
+    wa = set(re.findall(r"\w+", (a or "").lower())) - _PUB_STOP
+    wb = set(re.findall(r"\w+", (b or "").lower())) - _PUB_STOP
+    return bool(wa & wb)
+
+
+def rank_volumes(name: str, hint: dict, limit: int = 8) -> list[dict]:
+    """search_volumes, re-ordered by how well each volume fits the note: same
+    language (publisher-inferred) first, then publisher-name overlap, then a
+    plausible issue count (📂), then exact name and completeness."""
+    cands = search_volumes(name, limit=limit)
+    lang, pub, cnt = hint.get("language"), hint.get("publisher"), hint.get("count")
+
+    def score(c: dict) -> float:
+        s = 0.0
+        if lang and publisher_language(c.get("publisher")) == lang:
+            s += 100
+        if pub and _pub_overlap(pub, c.get("publisher")):
+            s += 10
+        iss = c.get("issues") or 0
+        if cnt:
+            s += 5 if iss >= cnt else -25          # too small to hold the run
+        if _norm_name(c.get("name")) == _norm_name(name):
+            s += 3
+        s += min(iss, 60) / 100.0
+        return s
+
+    return sorted(cands, key=score, reverse=True)
+
+
+def pick_edition(candidates: list[dict], hint: dict) -> dict | None:
+    """Auto-select a volume only when the note's language pins a SINGLE edition
+    (same series name, matching language, and — if given — able to hold the run).
+    Returns None when it is ambiguous, so the caller falls back to asking."""
+    lang = hint.get("language")
+    if not lang or not candidates:
+        return None
+    name = hint.get("series") or ""
+    same = [c for c in candidates if _norm_name(c.get("name")) == _norm_name(name)] or candidates
+    hits = [c for c in same if publisher_language(c.get("publisher")) == lang]
+    cnt = hint.get("count")
+    if cnt:
+        fit = [c for c in hits if (c.get("issues") or 0) >= cnt]
+        if fit:
+            hits = fit
+    return hits[0] if len(hits) == 1 else None
 
 
 def volume_of_issue(issue_id: int) -> dict | None:

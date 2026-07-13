@@ -1,4 +1,8 @@
 telethon>=1.36,<2
-comictagger==1.5.5
+# 1.6 has no stable PyPI release yet — pin the newest pre-release (the exact
+# build the CLI was validated against). An explicit pre-release pin is honored
+# by pip without --pre. Its CLI differs from 1.5.x (see identify._run_ct).
+comictagger==1.6.0b11.dev0
 unrar-cffi>=0.2.2
 requests==2.*
+myjdapi==1.1.*

@@ -217,6 +217,12 @@ async def process_file(client, f: Path) -> None:
     fn_issue = _issue_from_name(cbz.stem)
     if fn_issue:
         hint_meta["issue"] = fn_issue
+    # Without a series hint ComicTagger's anchored (-m) attempts never run and
+    # bracket-prefixed release names fail wholesale — fall back to the filename.
+    if not hint_meta.get("series"):
+        fn_series = _series_from_name(cbz.stem)
+        if fn_series:
+            hint_meta["series"] = fn_series
 
     # A filename with no real words can't help ComicTagger — rebuild it from the hints.
     if hint_meta.get("series") and not _has_words(cbz.stem):
@@ -227,7 +233,28 @@ async def process_file(client, f: Path) -> None:
             cbz.rename(renamed)
             cbz = renamed
 
+    # Strip release-group noise from the filename so ComicTagger's own first
+    # (filename-only) pass sees a clean "Series #NN". A "[2015 - 01]" cover-date
+    # prefix made it give up with "Not enough info for a search", and trailing
+    # "@Comicverso"/"[CRG]" tags derailed the parse (verified).
+    cleaned = _clean_stem_for_tagging(cbz.stem)
+    if cleaned and cleaned != cbz.stem:
+        renamed = cbz.with_name(filer.sanitize(cleaned) + ".cbz")
+        if not renamed.exists():
+            cbz.rename(renamed)
+            cbz = renamed
+
     ok = await asyncio.to_thread(identify.tag_file, cbz, hint_meta)
+    if ok and _edition_conflict(hint, hint_meta, cbz):
+        # A multi-edition series (Thorgal ships in ~10 languages that reuse the
+        # same cover art) can auto-match to the WRONG edition when one edition's
+        # cover wins the hash tiebreak — that is how a Spanish Thorgal scan got
+        # auto-filed as the German "Splitter" edition. If the caption's publisher
+        # or language contradicts the match, distrust it: drop the tags and fall
+        # through, where the note's language usually pins the right edition.
+        log.info("edition conflict on %s — distrusting auto-match", cbz.name)
+        await asyncio.to_thread(identify.clear_tags, cbz)
+        ok = False
     if ok:
         await _file_and_report(client, cbz, slug, hint)
         return
@@ -257,14 +284,35 @@ async def process_file(client, f: Path) -> None:
                                note="ℹ️ Not on ComicVine — filed using the file's embedded metadata.")
         return
 
-    # Ask the owner: which series is it?
+    # Rank ComicVine candidates by the note (language/publisher/count) — used both
+    # to auto-pick a single-language edition and to order the fallback buttons.
     candidates = []
     if guess:
         try:
-            candidates = await asyncio.to_thread(identify.search_volumes, guess)
+            candidates = await asyncio.to_thread(identify.rank_volumes, guess, hint_meta)
         except Exception:  # noqa: BLE001
             log.exception("comicvine search failed")
 
+    # The note's language often pins one edition (💬 Español → the Spanish volume
+    # of a series printed in many languages). Tag it directly instead of asking,
+    # and remember it so the rest of the run auto-files.
+    pick = identify.pick_edition(candidates, hint_meta)
+    if pick:
+        issue_no = re.sub(r"^0+(?=\d)", "", hint_meta.get("issue") or "1")
+        try:
+            issue = await asyncio.to_thread(identify.find_issue, pick["id"], issue_no)
+        except Exception:  # noqa: BLE001
+            issue = None
+        if issue and await asyncio.to_thread(identify.tag_with_issue_id, cbz, issue["id"]):
+            if guess:
+                hints.map_set(guess, pick["id"], f"{pick['name']} ({pick['year']})")
+            lang = _LANG_NAME.get(hint_meta.get("language"), hint_meta.get("language") or "")
+            await _file_and_report(
+                client, cbz, slug, hint,
+                note=f"ℹ️ Auto-matched the {lang} edition from the note — {pick['publisher']}.")
+            return
+
+    # Ask the owner: which series is it? (candidates are already note-ranked)
     pid = uuid.uuid4().hex[:10]
     buttons = [
         [Button.inline(f"{c['name']} ({c['year']}) · {c['publisher']} · {c['issues']} iss."[:64],
@@ -291,6 +339,10 @@ async def process_file(client, f: Path) -> None:
 
 
 async def _file_and_report(client, cbz: Path, slug: str, hint: dict, note: str = "") -> None:
+    # Preserve the forwarded synopsis as the Summary when the tags carry none
+    # (ComicVine has no description for many issues) — no-op if one exists.
+    if hint.get("text"):
+        await asyncio.to_thread(identify.ensure_summary, cbz, hint["text"])
     src_name = cbz.name
     tags = identify.read_tags(cbz)
     try:
@@ -465,8 +517,58 @@ def _has_words(stem: str) -> bool:
     return len(re.findall(r"[A-Za-z]", stem)) >= 4
 
 
+def _strip_brackets(stem: str) -> str:
+    """Release names wrap cover dates and group tags in brackets —
+    "[2015 - 01] Lobo #002", "Frente de Leningrado - [Eurocomicsss]". The
+    digits inside broke series/issue parsing (a "[2015 - 01]" prefix made
+    _series_from_name split at 2015 and return None), so drop them wholesale."""
+    return re.sub(r"\[[^\]]*\]", " ", stem)
+
+
+def _clean_stem_for_tagging(stem: str) -> str:
+    """Drop bracketed tags ([2015 - 01], [CRG], [LC]) and @handles so ComicTagger
+    parses "Series #NN" cleanly from the filename."""
+    s = re.sub(r"@\w+", " ", _strip_brackets(stem))
+    return re.sub(r"\s{2,}", " ", s).strip(" -_.")
+
+
+# Words too generic to prove two publisher names are the same house.
+_PUB_STOP = {"comics", "comic", "editorial", "ediciones", "editions", "entertainment",
+             "the", "le", "la", "el", "los", "las", "de", "and", "y", "verlag"}
+
+
+def _caption_publisher(text: str) -> set[str] | None:
+    """Significant words of the publisher named on the caption's 🗞 line
+    ('🗞 | #LeLombard' -> {'lombard'}, '🗞 | #DCComics' -> {'dc'})."""
+    m = re.search(r"🗞\s*\|?\s*#?([^\n|]+)", text or "")
+    if not m:
+        return None
+    # split camelCase hashtags: 'LeLombard' -> Le Lombard, 'DCComics' -> DC Comics
+    parts = re.findall(r"[A-Z]+(?![a-z])|[A-Z][a-z]+|[a-z]+|\d+", m.group(1).strip())
+    words = {w.lower() for w in parts} - _PUB_STOP
+    return words or None
+
+
+_LANG_NAME = {"es": "Spanish", "en": "English", "fr": "French", "de": "German"}
+
+
+def _edition_conflict(hint: dict, hint_meta: dict, cbz: Path) -> bool:
+    """True when the auto-matched edition contradicts the note: a publisher that
+    shares no word with the caption's 🗞, or a language (publisher-inferred) that
+    differs from the caption's 💬 — either way the cover-hash likely picked the
+    wrong edition of a multi-language series."""
+    got_pub = identify.read_tags(cbz).get("Publisher") or ""
+    got_words = set(re.findall(r"\w+", got_pub.lower())) - _PUB_STOP
+    want = _caption_publisher(hint.get("text", ""))
+    if want and got_words and want.isdisjoint(got_words):
+        return True
+    lang = hint_meta.get("language")
+    got_lang = identify.publisher_language(got_pub)
+    return bool(lang and got_lang and lang != got_lang)
+
+
 def _series_from_name(stem: str):
-    stem = identify.normalize_numbering(stem)
+    stem = identify.normalize_numbering(_strip_brackets(stem))
     s = re.split(r"#|\d{3,}|\(", stem)[0]
     s = re.sub(r"[._]+", " ", s)
     s = re.sub(r"\s+\d{1,2}\s*$", "", s).strip(" -")
@@ -477,7 +579,7 @@ def _issue_from_name(stem: str):
     # Underscore-delimited scene names ("Maxentius_02_The_Augusta_2019_...") hide
     # the issue number from the boundary regex below, because "_" is a word char:
     # normalize separators first so "_02_" reads as a standalone number.
-    stem = identify.normalize_numbering(stem.replace("_", " "))
+    stem = identify.normalize_numbering(_strip_brackets(stem).replace("_", " "))
     m = re.search(r"#\s*(\d+(?:\.\d+)?)", stem)
     if m:
         return m.group(1)
