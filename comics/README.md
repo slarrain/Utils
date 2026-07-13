@@ -8,7 +8,7 @@ Komga a couple of minutes later.
 Telegram message ──► comics-bot (Telethon)
     │ attachment (.cbz/.cbr)          │ download links
     ▼                                 ▼
- downloads directly            .crawljob → JDownloader FolderWatch
+ downloads directly            My.JDownloader API  (.crawljob fallback)
     └──────────────┬──────────────────┘
                    ▼
         /inbox/telegram/<slug>/   (= NAS /volume1/NAS/downloads/COMICS/telegram)
@@ -40,9 +40,11 @@ Telegram message ──► comics-bot (Telethon)
 2. **Credentials**: `cp deploy.secrets.example deploy.secrets` and fill in
    (Telegram api_id/api_hash from https://my.telegram.org, ComicVine key,
    Komga login).
-3. **JDownloader FolderWatch** (for hoster links): in JD Settings →
-   Extension Modules → enable **FolderWatch**, and set its folder to
-   `/output/COMICS/folderwatch`. Direct Telegram attachments work without this.
+3. **JDownloader** (for hoster links): the bot submits links via the
+   My.JDownloader API — set `MYJD_EMAIL`/`MYJD_PASSWORD` in `deploy.secrets`. As
+   a fallback it writes `.crawljob` files, so also enable **FolderWatch** (JD
+   Settings → Extension Modules) pointed at `/output/COMICS/folderwatch`. Direct
+   Telegram attachments need neither.
 4. **Deploy**: `./deploy.sh` (builds locally, ships to the NAS over SSH,
    (re)starts the container — same pattern as comidas_campo).
 5. In Telegram, send `/start` to your bot — the first user to do so becomes
@@ -54,7 +56,14 @@ Forward any message from a comics channel to the bot (or into a
 group/channel where the bot is admin). It replies with progress and either
 files the comic automatically or asks you which series it is with buttons.
 
-Unidentifiable files are parked in `/inbox/failed/<slug>/`.
+When the bot asks with buttons, your pick is remembered for the rest of that
+series (`/series` lists them, `/forget <name>` drops one).
+
+Unidentifiable files are parked in `/inbox/failed/<slug>/`. To tag them later,
+run the **`/tag`** skill (`.claude/skills/tag/`): it tags everything in `failed/`
+(or a named series in the library's `Unknown/`), confirming the ComicVine
+edition once per series, and files them — reusing the pipeline over NFS, so it
+works even if the container is down.
 
 ## Paths (as mounted in the container)
 

@@ -5,4 +5,5 @@ __pycache__/
 *.session-journal
 .venv/
 venv/
-.claude/
+.claude/*
+!.claude/skills/
