@@ -15,7 +15,6 @@ from . import config, filer, hints, identify
 log = logging.getLogger("comicsbot.processor")
 
 _sizes: dict[str, tuple[int, float]] = {}   # path -> (size, first_seen_stable)
-_reported_pdf: set[str] = set()
 
 SCAN_INTERVAL = 20
 SETTLE_SECONDS = 30
@@ -90,12 +89,12 @@ async def scan_once(client) -> None:
         if not f.is_file():
             continue
         ext = f.suffix.lower()
-        if ext in config.OTHER_EXTS and str(f) not in _reported_pdf:
-            _reported_pdf.add(str(f))
-            slug = _slug_of(f)
-            await _notify(client, hints.load(slug),
-                          f"⚠️ **{f.name}** is a {ext} — I only auto-tag comic archives. "
-                          f"Left in `inbox/telegram/{slug}/` for manual handling.")
+        if ext in config.OTHER_EXTS:
+            # Komga renders PDFs/EPUBs natively — file as-is instead of parking.
+            if not _is_stable(f):
+                continue
+            _sizes.pop(str(f), None)
+            await process_other(client, f)
             continue
         if ext not in config.ARCHIVE_EXTS:
             continue
@@ -183,6 +182,43 @@ async def process_tagged(client, f: Path) -> None:
                       "moved to failed/. Tag it with ComicTagger first, then drop it in tagged/ again.")
         return
     await _file_and_report(client, cbz, slug, {}, note="ℹ️ Filed from your manual tags.")
+
+
+async def process_other(client, f: Path) -> None:
+    """A PDF/EPUB — Komga reads these natively, so file it as-is (keep the file,
+    guess the publisher, write series.json) instead of parking it. ComicTagger
+    can't hash a non-archive cover, so this leans on the caption/filename hints;
+    worst case it lands under Unknown/, which the owner can retag with /tag."""
+    slug = _slug_of(f)
+    hint = hints.load(slug) or {}
+    text = hint.get("text", "")
+    meta = identify.parse_hints(text)
+    fname_meta = identify.parse_hints(f.stem.replace("_", " "))
+    tags = {
+        "Series": meta.get("series") or _series_from_name(f.stem) or f.stem,
+        "Number": meta.get("issue") or "",
+        "Year": meta.get("year") or fname_meta.get("year") or "",
+        "Publisher": meta.get("publisher") or filer.guess_publisher(text) or "Unknown",
+        "Summary": text[:1500] or None,
+    }
+    try:
+        dest = await asyncio.to_thread(filer.file_comic, f, tags)
+    except Exception as e:  # noqa: BLE001
+        log.exception("filing pdf/epub failed")
+        _park(f, slug)
+        await _notify(client, hint, f"❌ Couldn't file **{f.name}** ({e}). Moved to failed/.")
+        return
+    _cleanup_slug_dir(f.parent)
+    hints.delete(slug)
+    scanned = await asyncio.to_thread(filer.komga_scan)
+    rel = dest.relative_to(config.LIBRARY)
+    await _notify(
+        client, hint,
+        f"✅ **{f.name}** ({f.suffix.lstrip('.').upper()}) filed as-is\n`{rel}`"
+        + ("\n📚 Komga rescan triggered." if scanned else "")
+        + ("\n⚠️ Publisher guessed as *Unknown* — retag with /tag if you want it re-homed."
+           if tags["Publisher"] == "Unknown" else ""),
+    )
 
 
 async def process_file(client, f: Path) -> None:

@@ -32,7 +32,13 @@ def _issue_str(number: str) -> str:
 
 
 def file_comic(path: Path, tags: dict) -> Path:
-    """Move a tagged cbz into LIBRARY/Publisher/Series (Year)/, write sidecars."""
+    """Move a tagged comic into LIBRARY/Publisher/Series (Year)/, write sidecars.
+
+    Archives arrive normalized to .cbz with the tags embedded as ComicInfo.xml.
+    A PDF/EPUB keeps its own extension — Komga renders those natively — and,
+    having nowhere to embed ComicInfo.xml, gets its series metadata from a
+    series.json written from `tags`.
+    """
     issue_id = tags.get("issue_id")
     volume = identify.volume_of_issue(issue_id) if issue_id else None
     vinfo = identify.volume_info(volume["id"]) if volume else {}
@@ -42,6 +48,9 @@ def file_comic(path: Path, tags: dict) -> Path:
     start_year = vinfo.get("start_year") or tags.get("Year") or ""
     cover_year = tags.get("Year") or start_year
     issue = _issue_str(tags["Number"]) if tags.get("Number") else ""
+
+    ext = path.suffix.lower()
+    dest_ext = ext if ext in config.OTHER_EXTS else ".cbz"
 
     dir_name = f"{sanitize(series)} ({start_year})" if start_year else sanitize(series)
     publisher_dir = config.LIBRARY / sanitize(publisher)
@@ -59,11 +68,11 @@ def file_comic(path: Path, tags: dict) -> Path:
     base = f"{sanitize(series)} {issue}".strip() + (f" ({cover_year})" if cover_year else "")
     with _move_lock:
         series_dir.mkdir(parents=True, exist_ok=True)
-        dest = series_dir / f"{base}.cbz"
+        dest = series_dir / f"{base}{dest_ext}"
         n = 1
         while dest.exists():
             n += 1
-            dest = series_dir / f"{base} ({n}).cbz"
+            dest = series_dir / f"{base} ({n}){dest_ext}"
         shutil.move(str(path), dest)
 
     if vinfo:
@@ -94,9 +103,42 @@ def file_comic(path: Path, tags: dict) -> Path:
                     "status": "Unknown",
                 },
             }, ensure_ascii=False, indent=4))
+    elif dest_ext in config.OTHER_EXTS:
+        # No ComicVine identity and no archive to embed ComicInfo.xml into, so
+        # series.json is Komga's only metadata for this PDF/EPUB.
+        _basic_series_json(series_dir, publisher, series, start_year, tags.get("Summary"))
 
     log.info("filed %s", dest)
     return dest
+
+
+def _basic_series_json(series_dir: Path, publisher: str, series: str,
+                       year, summary: str | None) -> None:
+    """series.json for a PDF/EPUB filed without a ComicVine identity."""
+    series_json = series_dir / "series.json"
+    if series_json.exists():
+        return
+    series_json.write_text(json.dumps({
+        "version": "1.0.2",
+        "metadata": {
+            "type": "comicSeries",
+            "publisher": publisher,
+            "imprint": None,
+            "name": series,
+            "comicid": None,
+            "year": int(year) if str(year).isdigit() else None,
+            "description_text": summary,
+            "description_formatted": None,
+            "volume": None,
+            "booktype": "One-Shot",
+            "age_rating": None,
+            "collects": None,
+            "comic_image": None,
+            "total_issues": None,
+            "publication_run": "",
+            "status": "Unknown",
+        },
+    }, ensure_ascii=False, indent=4))
 
 
 def guess_publisher(text: str) -> str | None:

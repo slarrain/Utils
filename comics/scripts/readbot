@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Read the last N messages from the comics-bot Telegram chat (read-only).
+# Finds a Python that has telethon, then runs read_bot.py next to this wrapper.
+#   scripts/readbot        # last 10
+#   scripts/readbot 2      # last 2
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PY=""
+for cand in \
+  "$HOME/github/titularia/.venv/bin/python" \
+  "$HOME/github/titularia/extraccion_texto/venv/bin/python" \
+  "$(command -v python3 || true)"; do
+  if [ -n "$cand" ] && [ -x "$cand" ] && "$cand" -c 'import telethon' 2>/dev/null; then
+    PY="$cand"
+    break
+  fi
+done
+if [ -z "$PY" ]; then
+  echo "No Python with telethon found (tried titularia venv + system python3)." >&2
+  echo "Install with: pip install telethon" >&2
+  exit 1
+fi
+exec "$PY" "$DIR/read_bot.py" "$@"
