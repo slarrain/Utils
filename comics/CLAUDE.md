@@ -46,6 +46,9 @@ builds inside the image (the Dockerfile installs `pkg-config`/`libicu-dev`).
 - **ComicVine** — rate-limited; keep to ~1 req/s and back off on HTTP 420. `identify._cv_get`
   is the single choke point (wrap it to throttle/cache when batch-processing).
 - **Komga** — `filer.komga_scan()` (library id autodetected; `0FSAPZZ0CBEAX` = "Comics").
+  Crossover **read lists** (story arcs, à la Mylar) and the **slow bulk-reindex** gotcha
+  (`analyzeDimensions`/`hashFiles` re-read every page over NFS) are documented in
+  `docs/komga-readlists-and-bulk-reindex.md`.
 - **My.JDownloader** — links go via the API first (`jd.add_links`, same path as the UI's
   Add Links), `.crawljob` FolderWatch only as fallback; `confirm_in_jd` verifies they land.
 
