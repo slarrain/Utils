@@ -125,7 +125,11 @@ HELP = (
     "If I'm not sure which comic it is, I'll ask you with buttons — and I "
     "remember your answer for the rest of that series.\n\n"
     "Commands:\n"
-    "/series — list remembered series→volume answers\n"
+    "/series — list remembered series answers\n"
+    "/series set <series> | <publisher> | [year] — auto-file a series that "
+    "isn't on ComicVine (every future issue, no prompt)\n"
+    "/series merge <sub> into <series> | [prefix] — fold a differently-named "
+    "line into a set series (prefix keeps its numbers distinct)\n"
     "/forget <series name> — drop a remembered answer\n"
     "/rescan_failed — file anything in failed/ that you've since tagged\n\n"
     "Manual tagging: tag a failed file in place with ComicTagger and send "
@@ -241,9 +245,65 @@ async def handle_message(event) -> None:
         await event.reply(HELP)
         return
     if cmd.startswith("/series"):
+        rest = cmd[len("/series"):].strip()
+        if rest[:3].lower() == "set":
+            parts = [p.strip() for p in rest[3:].split("|")]
+            if len(parts) < 2 or not parts[0] or not parts[1]:
+                await event.reply(
+                    "Usage: `/series set <series> | <publisher> | [year] | [dated]`\n"
+                    "e.g. `/series set Cuentos de Walt Disney | Editorial Novaro | 1949`\n"
+                    "Add `| dated` for specials numbered by date (→ YYYY.MM):\n"
+                    "`/series set Cuentos de Walt Disney Extra | Editorial Novaro | 1953 | dated`\n\n"
+                    "Files every future issue of that (not-on-ComicVine) series "
+                    "automatically, no prompt. Undo with `/forget <series>`.")
+                return
+            series_name, publisher = parts[0], parts[1]
+            extra = [p for p in parts[2:] if p]
+            _DATED = ("dated", "date", "por fecha")
+            dated = any(x.lower() in _DATED for x in extra)
+            year = next((x for x in extra if x.lower() not in _DATED), None)
+            hints.map_set_asis(series_name, publisher, series_name, year,
+                               numbering=("date" if dated else "seq"))
+            await event.reply(
+                f"✅ Remembered **{series_name}** → file as-is under "
+                f"*{publisher}*{f' ({year})' if year else ''}"
+                f"{', numbered by date (YYYY.MM)' if dated else ''}.\n"
+                "Future issues auto-file with no prompt.")
+            return
+        if rest[:5].lower() == "merge":
+            m = re.match(r"(?is)^(.+?)\s+into\s+(.+)$", rest[5:].strip())
+            if not m:
+                await event.reply(
+                    "Usage: `/series merge <sub-series> into <target series> | [number prefix]`\n"
+                    "e.g. `/series merge Cuentos de Walt Disney Novaro Extra into "
+                    "Cuentos de Walt Disney | Extra`\n\n"
+                    "Folds a differently-named line into an already-`set` series. The "
+                    "prefix keeps its numbering distinct (Extra 12), so it doesn't "
+                    "collide with the main run.")
+                return
+            sub = m.group(1).strip()
+            tparts = [p.strip() for p in m.group(2).split("|")]
+            target, prefix = tparts[0], (tparts[1] if len(tparts) > 1 else "")
+            tgt = hints.map_get(target)
+            if not tgt or not tgt.get("asis"):
+                await event.reply(
+                    f"“{target}” isn't a remembered as-is series yet — set it first "
+                    "with `/series set …`, then merge into it.")
+                return
+            if prefix and not prefix.endswith(" "):
+                prefix += " "
+            a = tgt["asis"]
+            hints.map_set_asis(sub, a["publisher"], a["series"], a.get("year") or None,
+                               None, prefix, a.get("numbering", "seq"))
+            await event.reply(
+                f"✅ Merged **{sub}** into **{a['series']}**"
+                + (f" (numbered “{prefix.strip()} N”)" if prefix else "")
+                + ". Future issues fold in automatically.")
+            return
         entries = hints.map_all()
         if not entries:
-            await event.reply("No remembered series yet.")
+            await event.reply("No remembered series yet. Teach one with "
+                              "`/series set <series> | <publisher> | [year]`.")
         else:
             lines = [f"• {k} → {v['label']}" for k, v in sorted(entries.items())]
             await event.reply("Remembered series answers:\n" + "\n".join(lines)[:3500])

@@ -90,6 +90,19 @@ Tag via ComicTagger `--id <issue_id>`, then `filer.file_comic`, then `komga_scan
 - **"Your tags are law"**: a human-tagged file (drop in `downloads/COMICS/tagged/`, or tag
   in place + `/rescan_failed`) is filed from its embedded tags with no re-identification —
   so tag typos are filed faithfully too.
+- **Not-on-ComicVine series auto-file** via `series_map.json`: `map_set` stores a ComicVine
+  `volume_id`; `map_set_asis` stores an `{asis: {publisher, series, year, prefix}}` block so a
+  series CV doesn't index (e.g. *Cuentos de Walt Disney*, Editorial Novaro) files every future
+  issue with no prompt. Set via `/series set <series> | <publisher> | [year]`; fold a
+  differently-named line (an "Extra"/annual sub-series) into an existing one with
+  `/series merge <sub> into <series> | [prefix]` — the prefix (`Extra `) keeps its numbering
+  from colliding with the main run. `processor.process_file` stamps these tags with
+  `identify.write_basic_tags(..., overwrite=True)`, which overrides the uploader's embedded
+  ComicInfo (fixing a wrong/typo'd Series) instead of filing under it. Add `| dated` to
+  `/series set` for periodic specials numbered by date (Novaro's *Extra*/*Extraordinario*,
+  *Especial Avestruz*): `identify.date_number` turns the filename's `…1954-12…` / `…Mayo 1959…`
+  into `YYYY.MM` so they sort chronologically instead of reusing month/day fragments (which
+  collided — two "Extra 5"). `merge` inherits the target's numbering mode.
 
 ## Conventions
 

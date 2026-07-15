@@ -191,6 +191,33 @@ def read_tags(path: Path) -> dict:
     return tags
 
 
+_MESES = {"enero": "01", "febrero": "02", "marzo": "03", "abril": "04",
+          "mayo": "05", "junio": "06", "julio": "07", "agosto": "08",
+          "septiembre": "09", "setiembre": "09", "octubre": "10",
+          "noviembre": "11", "diciembre": "12"}
+
+
+def date_number(text: str) -> str | None:
+    """Chronological issue number `YYYY.MM` for date-labelled specials
+    (`… Extra 1953 05 Peter Pan` → `1953.05`, `… 1954-12 …` → `1954.12`,
+    `… Extraordinario 1953 Agosto` → `1953.08`). Falls back to the bare year,
+    or None if no year is present. Used by date-numbered as-is series so
+    periodic specials (which reuse month/day numbers) sort by date instead of a
+    meaningless sequence number that would collide."""
+    s = re.sub(r"[._\-]+", " ", text or "")
+    m = re.search(r"(19|20)\d{2}", s)
+    if not m:
+        return None
+    year, rest = m.group(0), s[m.end():]
+    mm = re.match(r"\s*(\d{1,2})\b", rest)
+    if mm and 1 <= int(mm.group(1)) <= 12:
+        return f"{year}.{int(mm.group(1)):02d}"
+    for name, num in _MESES.items():  # month name either side of the year ("Mayo 1959")
+        if re.search(rf"\b{name}\b", s, re.IGNORECASE):
+            return f"{year}.{num}"
+    return year
+
+
 def normalize_numbering(s: str) -> str:
     """Spanish/euro numbering: 'nº2'/'núm. 2' → '#2'; drop volume markers
     ('vol3', 'Vol. 3', 'tomo 2') so they aren't mistaken for issue numbers."""
@@ -373,9 +400,15 @@ def tag_file(path: Path, hint_meta: dict) -> bool:
     return False
 
 
-def write_basic_tags(path: Path, meta: dict) -> None:
-    """Write a minimal ComicInfo.xml from message hints (no ComicVine)."""
-    root = ET.Element("ComicInfo")
+def write_basic_tags(path: Path, meta: dict, overwrite: bool = False) -> None:
+    """Write a minimal ComicInfo.xml from message hints (no ComicVine).
+
+    Create-only by default. With overwrite=True it replaces an existing
+    ComicInfo.xml, keeping any embedded field the hints don't supply — used to
+    re-home a file onto a remembered not-on-ComicVine series (e.g. stamp the
+    Publisher the scan-set never carried, correcting a typo'd Series along the
+    way) instead of leaving it under whatever the uploader embedded.
+    """
     fields = {
         "Series": meta.get("series"),
         "Number": meta.get("issue"),
@@ -384,13 +417,25 @@ def write_basic_tags(path: Path, meta: dict) -> None:
         "Summary": meta.get("summary"),
         "Notes": "Tagged by comics-bot from Telegram message text (not on ComicVine).",
     }
+    with zipfile.ZipFile(path) as zf:
+        existing = next((n for n in zf.namelist() if n.lower() == "comicinfo.xml"), None)
+    if existing and not overwrite:
+        return
+    if existing:  # keep embedded values the hints don't override
+        prev = read_tags(path)
+        for tag in ("Series", "Number", "Year", "Publisher", "Summary"):
+            if not fields.get(tag) and prev.get(tag):
+                fields[tag] = prev[tag]
+    root = ET.Element("ComicInfo")
     for tag, value in fields.items():
         if value:
             ET.SubElement(root, tag).text = str(value)
-    xml = ET.tostring(root, encoding="unicode")
-    with zipfile.ZipFile(path, "a") as zf:
-        if not any(n.lower() == "comicinfo.xml" for n in zf.namelist()):
-            zf.writestr("ComicInfo.xml", '<?xml version="1.0"?>\n' + xml)
+    data = ('<?xml version="1.0"?>\n' + ET.tostring(root, encoding="unicode")).encode()
+    if existing:
+        _replace_zip_entry(path, existing, data)
+    else:
+        with zipfile.ZipFile(path, "a") as zf:
+            zf.writestr("ComicInfo.xml", data)
 
 
 def _extract_synopsis(text: str) -> str | None:

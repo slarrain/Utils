@@ -72,6 +72,38 @@ def map_set(name: str, volume_id: int, label: str) -> None:
     _series_map_path().write_text(json.dumps(m, ensure_ascii=False, indent=1))
 
 
+def map_set_asis(name: str, publisher: str, series: str,
+                 year: str | int | None = None, summary: str | None = None,
+                 prefix: str = "", numbering: str = "seq") -> None:
+    """Remember a series that isn't on ComicVine: every future issue then files
+    as-is under this publisher/series/year with no prompt. Distinguished from a
+    ComicVine answer by the "asis" block instead of a "volume_id".
+
+    When `name` (the incoming-title to match) differs from `series` (the folder
+    to file under), this folds a sub-series into another — `prefix` is prepended
+    to each issue number ("Extra " → "Extra 12") so the sub-series stays distinct
+    inside the shared series instead of colliding with the main run's numbering.
+
+    `numbering="date"` numbers issues `YYYY.MM` from the filename instead of the
+    filename's sequence number — for periodic specials labelled by date rather
+    than a running number (they'd otherwise reuse month/day fragments and collide).
+    """
+    m = _load_series_map()
+    label = f"{series} · {publisher}" + (f" ({year})" if year else "")
+    if prefix:
+        label += f" · “{prefix.strip()}” nums"
+    if numbering == "date":
+        label += " · dated"
+    label += " · as-is"
+    m[series_key(name)] = {
+        "asis": {"publisher": publisher, "series": series,
+                 "year": str(year) if year else "", "summary": summary,
+                 "prefix": prefix, "numbering": numbering},
+        "label": label,
+    }
+    _series_map_path().write_text(json.dumps(m, ensure_ascii=False, indent=1))
+
+
 def map_delete(name: str) -> bool:
     m = _load_series_map()
     k = series_key(name)

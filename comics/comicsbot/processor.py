@@ -297,9 +297,34 @@ async def process_file(client, f: Path) -> None:
 
     guess = hint_meta.get("series") or _series_from_name(cbz.stem)
 
-    # A previous button answer for this series? Apply it without asking.
+    # A previous answer for this series? Apply it without asking.
     mapped = hints.map_get(guess) if guess else None
-    if mapped:
+    if mapped and mapped.get("asis"):
+        # A remembered not-on-ComicVine series (set via /series set): stamp its
+        # publisher/series/year over whatever the uploader embedded and file it
+        # straight to that folder — this is how a 300-issue run auto-files.
+        a = mapped["asis"]
+        if a.get("numbering") == "date":
+            num = identify.date_number(cbz.stem) or re.sub(r"^0+(?=\d)", "", hint_meta.get("issue") or "")
+        else:
+            num = re.sub(r"^0+(?=\d)", "", hint_meta.get("issue") or "")
+        meta = {
+            "series": a.get("series") or guess,
+            "issue": ((a.get("prefix") or "") + num).strip() or None,
+            "year": a.get("year") or hint_meta.get("year"),
+            "publisher": a.get("publisher"),
+            "summary": (hint.get("text") or "")[:1500] or a.get("summary") or None,
+        }
+        try:
+            await asyncio.to_thread(identify.write_basic_tags, cbz, meta, True)
+        except Exception:  # noqa: BLE001
+            log.exception("as-is auto-tag failed for %s", cbz.name)
+        else:
+            await _file_and_report(
+                client, cbz, slug, hint,
+                note=f"ℹ️ Auto-filed from your remembered series → {mapped['label']}.")
+            return
+    elif mapped:
         issue_no = re.sub(r"^0+(?=\d)", "", hint_meta.get("issue") or "1")
         try:
             issue = await asyncio.to_thread(identify.find_issue, mapped["volume_id"], issue_no)
