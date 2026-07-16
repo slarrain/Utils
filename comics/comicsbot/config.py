@@ -48,6 +48,20 @@ PENDING = DATA / "pending"
 ARCHIVE_EXTS = {".cbz", ".cbr", ".cb7", ".zip", ".rar", ".7z"}
 OTHER_EXTS = {".pdf", ".epub"}
 
+# getcomics.org release-page ingestion. JD's GetComicsInfo plugin resolves a page
+# into one link *per mirror per file* (no dedupe). The bot keeps, per file, the set
+# of same-filename mirrors so JD's own mirror detection (MirrorDetectionDecision=AUTO,
+# filename-based) downloads ONE and auto-fails-over to the next if a host errors —
+# a link checking ONLINE does not guarantee it downloads (datanodes' JD plugin can be
+# outdated). `GETCOMICS_MIRROR_PRIORITY` orders which mirror JD is handed first (host
+# token = substring of JD's reported host); datanodes is ranked last because it uses a
+# different raw filename (so JD can't group it) and its plugin is often stale.
+# `GETCOMICS_DROP_HOSTS` are never downloaded (terabox never resolves; mega is dead);
+# offline/junk links (ads, Cloudflare stubs) are dropped regardless. Both are tunable.
+GETCOMICS_MIRROR_PRIORITY = ("http links", "pixeldrain", "mediafire",
+                             "vikingfile", "ufile", "datanodes")
+GETCOMICS_DROP_HOSTS = ("terabox", "mega")
+
 
 def ensure_dirs() -> None:
     for p in (TELEGRAM_INBOX, FOLDERWATCH, FAILED, TAGGED, HINTS, PENDING, DATA):

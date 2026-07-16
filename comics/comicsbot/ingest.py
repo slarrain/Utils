@@ -4,7 +4,7 @@ import json
 import logging
 import re
 import time
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from . import config, hints, jd
 
@@ -104,6 +104,30 @@ SKIP_HOSTS = ("t.me/", "telegram.me/", "telegram.dog/",
 # actual archive in a sibling message. The caption's only link is a credit link,
 # so a cover image must be treated as context, never mined for download links.
 COVER_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+# getcomics.org release *pages* (not a direct file). JD's GetComicsInfo plugin
+# resolves them; we route them specially so the bot can prune to one mirror/file.
+GETCOMICS_HOSTS = ("getcomics.org", "getcomics.info")
+
+
+def is_getcomics_url(u: str) -> bool:
+    return any(h in u.lower() for h in GETCOMICS_HOSTS)
+
+
+def getcomics_title(u: str) -> str:
+    """A series-ish title from a getcomics release URL slug — best-effort, feeds the
+    slug and hint text only (identification uses the real downloaded filename):
+    '/dc/northlanders-book-1-3-2016-2017/' -> 'Northlanders Book 1 3 (2016-2017)'."""
+    slug = urlparse(u).path.strip("/").split("/")[-1]
+    if not slug:
+        return ""
+    words = slug.replace("_", "-").split("-")
+    years: list[str] = []
+    while words and re.fullmatch(r"(?:19|20)\d{2}", words[-1]):
+        years.insert(0, words.pop())
+    title = " ".join(w for w in words if w).title()
+    if years:
+        title += f" ({'-'.join(years)})"
+    return title.strip()
 
 
 def _clean_url(u: str) -> str:
@@ -202,6 +226,68 @@ async def send_to_jd(slug: str, urls: list[str]) -> str:
         log.exception("myjd add_links failed for %s; falling back to crawljob", slug)
         write_crawljob(slug, urls)
         return "crawljob"
+
+
+async def send_getcomics_to_jd(slug: str, gc_url: str) -> None:
+    """Add a getcomics release page to JD's LinkGrabber PAUSED (autostart=False) so
+    its GetComicsInfo plugin resolves the mirror links before we prune to one per
+    file. `deepDecrypt` (set in jd.add_links) drives the plugin; JD honors the
+    packageName/folder we pass (verified — no re-home when set via the API)."""
+    await asyncio.to_thread(
+        jd.add_links, slug, [gc_url], f"{config.JD_DOWNLOAD_ROOT}/telegram/{slug}", False)
+
+
+async def confirm_and_prune_getcomics(slug: str, status_msg) -> None:
+    """Wait for JD to resolve the getcomics page (it is slow — poll patiently), keep
+    one mirror per file (config.GETCOMICS_MIRROR_PRIORITY, official DOWNLOAD NOW
+    first), start the downloads, and report. The processor picks the files up from
+    the shared inbox folder once JD finishes downloading them."""
+    pkg, last, stable = None, -1, 0
+    for _ in range(30):                      # ~6 min of patient polling
+        await asyncio.sleep(12)
+        try:
+            collecting = await asyncio.to_thread(jd.is_collecting)
+            pkg = await asyncio.to_thread(jd.linkgrabber_package, slug)
+        except Exception:  # noqa: BLE001 - keep polling through transient API errors
+            log.exception("getcomics poll failed for %s", slug)
+            continue
+        cc = (pkg or {}).get("childCount") or 0
+        if pkg and not collecting and cc > 0 and cc == last:
+            stable += 1
+            if stable >= 2:
+                break
+        else:
+            stable = 0
+        last = cc
+    if not pkg or not ((pkg.get("childCount") or 0)):
+        await status_msg.edit(
+            f"⚠️ JDownloader hasn't resolved **{slug}** yet — getcomics can be slow; "
+            "it may still be working. Check the JD web UI if it stalls.")
+        return
+    try:
+        result = await asyncio.to_thread(
+            jd.prune_getcomics_mirrors, slug, config.GETCOMICS_MIRROR_PRIORITY,
+            config.GETCOMICS_DROP_HOSTS)
+        if result and result.get("files"):
+            await asyncio.to_thread(jd.start_getcomics_download, slug)
+    except Exception:  # noqa: BLE001
+        log.exception("getcomics prune failed for %s", slug)
+        await status_msg.edit(
+            f"⚠️ Resolved **{slug}** but couldn't prune the mirrors automatically — "
+            "check the JD web UI.")
+        return
+    if not result or not result.get("files"):
+        await status_msg.edit(
+            f"⚠️ **{slug}**: JDownloader resolved the page but I found no usable "
+            "download (all mirrors offline?). Check the JD web UI.")
+        return
+    lines = "\n".join(f"• {k['file']} ({', '.join(m['host'] for m in k['mirrors'])})"
+                      for k in result["kept"][:10])
+    await status_msg.edit(
+        f"📥 JDownloader downloading **{slug}** — {result['files']} file(s), "
+        f"{result['mirrors_kept']} mirror(s) kept for fallback, "
+        f"{result['dropped']} dropped:\n{lines}\n"
+        "I'll identify and file each comic when the downloads finish.")
 
 
 async def confirm_in_jd(slug: str, urls: list[str], status_msg) -> None:
@@ -365,13 +451,35 @@ async def handle_message(event) -> None:
     # context path and enriches the sibling comic's hints instead of feeding
     # JDownloader a web page to scrape.
     is_cover = bool(msg.photo) or ext in COVER_EXTS
-    urls = [] if is_cover else extract_urls(msg)
+    urls = extract_urls(msg)
+    if is_cover:
+        # A cover photo's caption is context, not a download — EXCEPT a getcomics
+        # release link, which is the download even when it rides on a cover image.
+        urls = [u for u in urls if is_getcomics_url(u)]
     if urls:
+        gc = next((u for u in urls if is_getcomics_url(u)), None)
         first_line = next((ln for ln in text.splitlines() if ln.strip()), name or "comic")
-        slug = make_slug(re.sub(r"https?://\S+", "", first_line), event.chat_id, msg.id)
+        base = getcomics_title(gc) if gc else re.sub(r"https?://\S+", "", first_line)
+        slug = make_slug(base or "comic", event.chat_id, msg.id)
         _remember_slug(event.chat_id, slug, origin)
         context = assign_context(event.chat_id, slug, origin)
-        hints.save(slug, (text + "\n" + "\n".join(context)).strip(), event.chat_id, msg.id)
+        # Seed the hints with the URL-derived title so the identifier has a series
+        # string even before the real filename lands.
+        hint_prefix = (getcomics_title(gc) + "\n") if gc else ""
+        hints.save(slug, (hint_prefix + text + "\n" + "\n".join(context)).strip(),
+                   event.chat_id, msg.id)
+        if gc:
+            try:
+                await send_getcomics_to_jd(slug, gc)
+            except Exception:  # noqa: BLE001 - fall back to the generic path below
+                log.exception("getcomics add failed for %s; falling back to generic", slug)
+            else:
+                log.info("sent getcomics page to JD: %s", slug)
+                status = await event.reply(
+                    f"📨 Sent getcomics page to JDownloader as **{slug}** — "
+                    "resolving mirrors (this can take a minute)…")
+                asyncio.create_task(confirm_and_prune_getcomics(slug, status))
+                return
         route = await send_to_jd(slug, urls)
         log.info("sent to JD via %s: %s (%d links)", route, slug, len(urls))
         status = await event.reply(
