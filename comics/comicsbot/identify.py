@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
@@ -76,6 +77,32 @@ def explode_container(path: Path) -> list[Path] | None:
             dest = _unique(path.parent / Path(i.filename).name)
             dest.write_bytes(rf.read(i))
             out.append(dest)
+        path.unlink()
+        return out
+    if magic.startswith(b"7z\xbc\xaf\x27\x1c"):
+        # 7z has no stdlib reader, so extract with `unar` (already used by
+        # _unar_to_cbz and shipped in the image) into a scratch dir and inspect
+        # it: a 7z of page images is a single comic (hand it to ensure_cbz), a
+        # 7z of inner .cbz/.cbr archives is a container whose members we return.
+        with tempfile.TemporaryDirectory(prefix="explode7z-") as td:
+            try:
+                subprocess.run(
+                    ["unar", "-quiet", "-no-directory", "-output-directory", td, str(path)],
+                    check=True, capture_output=True, text=True, timeout=600,
+                )
+            except subprocess.CalledProcessError:
+                return None  # unreadable as 7z — let ensure_cbz surface the error
+            files = [f for f in Path(td).rglob("*") if f.is_file()]
+            if any(f.suffix.lower() in IMAGE_EXTS for f in files):
+                return None
+            inner = [f for f in files if f.suffix.lower() in inner_exts]
+            if not inner:
+                return None
+            out = []
+            for f in sorted(inner, key=lambda f: f.name.lower()):
+                dest = _unique(path.parent / f.name)
+                shutil.move(str(f), dest)
+                out.append(dest)
         path.unlink()
         return out
     return None
@@ -512,14 +539,36 @@ def clear_tags(path: Path) -> None:
 # --------------------------------------------------------------------------- #
 # ComicVine API (for candidates and series metadata)
 # --------------------------------------------------------------------------- #
+# ComicVine rate-limits hard (HTTP 420). This is the single choke point, so it
+# enforces the pacing the rest of the code assumes: ~1 req/s spacing plus a
+# retry/back-off on 420. Without it, a large batch (e.g. a whole Dago run being
+# forwarded at once) trips the limit and every lookup *after* it fails, so those
+# issues cascade into failed/. Runs in a worker thread (processor wraps every CV
+# call in asyncio.to_thread), so the blocking sleeps don't stall the event loop.
+# The /tag engine (tagkit) wraps this same function identically for its own path.
+_CV_MIN_INTERVAL = 1.2   # seconds between requests
+_CV_MAX_RETRIES = 6      # attempts to ride out a 420 before giving up
+_cv_last_call = 0.0
+
+
 def _cv_get(path: str, **params):
+    global _cv_last_call
     params.update(api_key=config.CV_API_KEY, format="json")
-    r = requests.get(f"{CV_BASE}/{path}", params=params, headers=CV_HEADERS, timeout=60)
-    r.raise_for_status()
-    j = r.json()
-    if j.get("status_code") != 1:
-        raise RuntimeError(f"ComicVine error: {j.get('error')}")
-    return j.get("results")
+    for attempt in range(_CV_MAX_RETRIES + 1):
+        wait = _CV_MIN_INTERVAL - (time.monotonic() - _cv_last_call)
+        if wait > 0:
+            time.sleep(wait)
+        _cv_last_call = time.monotonic()
+        r = requests.get(f"{CV_BASE}/{path}", params=params, headers=CV_HEADERS, timeout=60)
+        if r.status_code == 420 and attempt < _CV_MAX_RETRIES:
+            log.warning("ComicVine 420 (rate limit); backing off (attempt %d)", attempt + 1)
+            time.sleep(6 * (attempt + 1))   # escalating: 6, 12, 18, 24, 30, 36s
+            continue
+        r.raise_for_status()
+        j = r.json()
+        if j.get("status_code") != 1:
+            raise RuntimeError(f"ComicVine error: {j.get('error')}")
+        return j.get("results")
 
 
 def search_volumes(name: str, limit: int = 6) -> list[dict]:

@@ -43,8 +43,12 @@ builds inside the image (the Dockerfile installs `pkg-config`/`libicu-dev`).
 
 ## External services
 
-- **ComicVine** — rate-limited; keep to ~1 req/s and back off on HTTP 420. `identify._cv_get`
-  is the single choke point (wrap it to throttle/cache when batch-processing).
+- **ComicVine** — rate-limited (HTTP 420). `identify._cv_get` is the single choke point and
+  now self-throttles (~1 req/s via `_CV_MIN_INTERVAL`) and retries 420 with escalating
+  back-off; without this a large batch (a whole Dago run forwarded at once) trips the limit
+  and every lookup after it fails, dumping issues into `failed/`. Runs inside
+  `asyncio.to_thread` so the blocking sleeps don't stall the bot's event loop. `tagkit`
+  wraps the same function for the `/tag` path (so batch tagging is throttled there too).
 - **Komga** — `filer.komga_scan()` (library id autodetected; `0FSAPZZ0CBEAX` = "Comics").
   Crossover **read lists** (story arcs, à la Mylar) and the **slow bulk-reindex** gotcha
   (`analyzeDimensions`/`hashFiles` re-read every page over NFS) are documented in
@@ -61,6 +65,11 @@ even when the container is unreachable. `tagkit.py` there is also the reference 
 "reuse comicsbot modules over NFS with env overrides" pattern (set `LIBRARY_DIR`,
 `INBOX_DIR`, `COMICVINE_API_KEY`, `KOMGA_*` and import `comicsbot.identify`/`filer`).
 Tag via ComicTagger `--id <issue_id>`, then `filer.file_comic`, then `komga_scan`.
+For a comic that isn't on ComicVine, **read the metadata out of the archive** rather than
+guessing: extract the cover (title/authors/publisher logo), the title/indicia page
+(`© Publisher YYYY`, ISBN, dépôt légal), and the back cover (blurb + ISBN country prefix,
+e.g. `978-84-` = Spanish edition) and `Read` them; internal page filenames often leak the
+original-language title too. Details in the `/tag` skill's gotchas.
 
 ## Gotchas & design decisions (hard-won — don't regress these)
 
@@ -76,7 +85,11 @@ Tag via ComicTagger `--id <issue_id>`, then `filer.file_comic`, then `komga_scan
   publisher/language conflict (`processor._edition_conflict`) distrusts a wrong auto-match.
 - **Sniff archive format from content, not extension** — a zip named `.cbr` (and vice-versa)
   is common. `explode_container` and `ensure_cbz` both content-sniff; dispatching on the
-  extension crashed the UnRAR engine ("OpenResult is 13").
+  extension crashed the UnRAR engine ("OpenResult is 13"). Formats: zip/rar/**7z** — 7z has
+  no stdlib reader, so both paths shell out to `unar` (in the image). A **multi-comic `.7z`
+  container** (a 7z of inner `.cbz`/`.cbr`) is exploded by `explode_container`; a 7z of loose
+  page images is a single comic that `ensure_cbz` converts. (Before this, a `.7z` container
+  fell through to `ensure_cbz` and died as "no images found inside".)
 - **A cover PHOTO with a caption is context, not a download.** Its only link is the release
   group's credit link (blog/forum/Facebook); routing it to JDownloader made JD *scrape the
   web page*. `ingest.py` treats photo/image messages as context and never mines them for

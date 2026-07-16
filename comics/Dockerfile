@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 
 # gcc/g++/pkg-config/libicu-dev: build PyICU (comictagger dep on linux)
-# unar: extract CBR/RAR archives for CBZ conversion
+# unar: extract CBR/RAR/7z archives for CBZ conversion (single comics and
+#       multi-comic .7z containers — see identify.ensure_cbz/explode_container)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc g++ pkg-config libicu-dev unar \
     && rm -rf /var/lib/apt/lists/*

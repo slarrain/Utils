@@ -72,12 +72,16 @@ Commands (all JSON in/out): `list`, `resolve`, `tag-series`, `asis`, `scan`.
       chosen volume comes back as `no issue #N in volume …` — re-check those
       (wrong volume, or a variant/annual numbering) rather than forcing them.
 
-   d. **Not on ComicVine?** Agree the publisher/year with the user, then per file:
+   d. **Not on ComicVine?** Don't guess the publisher/year — **look inside the
+      CBZ first** (see the gotcha below), agree the result with the user, then
+      per file:
       ```bash
       $PY tagkit.py asis --path "…/File.cbz" --series "Las guerras silenciosas" \
         --publisher "Norma Editorial" --year 2014 --summary "…"
       ```
-      Give a real publisher so it doesn't land back in `Unknown/`.
+      Give a real publisher so it doesn't land back in `Unknown/`. `asis` also
+      takes `--issue` — use it for multi-part albums (`--issue 1`, `--issue 2`)
+      so a 2-tome story files as one series with two numbered issues.
 
 3. **Scan Komga once** at the very end: `$PY tagkit.py scan`.
 
@@ -86,6 +90,23 @@ Commands (all JSON in/out): `list`, `resolve`, `tag-series`, `asis`, `scan`.
 ## Rules & gotchas (learned the hard way)
 
 - **One confirmation per series, then batch.** Don't re-ask per issue.
+- **Look inside the CBZ to recover metadata the filename lost.** When a comic
+  isn't on ComicVine, the archive itself is the primary source — far more
+  reliable than guessing from a noisy release-group filename. Extract a few
+  images with `zipfile` and `Read` them:
+    - **first page = cover** → title, authors, publisher logo (bottom corner),
+      collection/number;
+    - **title/credits (indicia)** → `© Publisher YYYY`, ISBN, legal deposit,
+      "dépôt légal", printing date. It's usually within the first few pages but
+      **not always page 2** — a reprint collection may open with a page of the
+      original covers, so scan pages ~2–5 (Groo's indicia was on page 4);
+    - **last page = back cover** → blurb (often dates the edition: "con ocasión
+      del centenario de…" → year), ISBN (a `978-84-…` prefix = Spanish edition).
+  The **internal page filenames** are a bonus tell: a Spanish scan whose pages
+  are named `Le dernier voyage T01-00.jpg` reveals the French original title —
+  handy for locating the right edition or the untranslated series name. Prefer
+  the ISBN country prefix + copyright line over web memory, and don't assert a
+  year you couldn't see (leave it blank rather than fabricate).
 - **Editions matter.** ComicVine's cover-hash can't tell a Spanish Thorgal from
   the German one (shared art). Pick by the caption's **language** + **issue
   count** — `resolve --language es --count 34` puts the right volume first.
